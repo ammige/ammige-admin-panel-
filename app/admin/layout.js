@@ -1,4 +1,4 @@
-import './admin.css';
+import MuiProvider from './components/MuiProvider';
 
 export const metadata = {
   title: 'AMMIGE Admin',
@@ -6,5 +6,5 @@ export const metadata = {
 };
 
 export default function AdminLayout({ children }) {
-  return <div className="min-h-screen bg-background">{children}</div>;
+  return <MuiProvider>{children}</MuiProvider>;
 }

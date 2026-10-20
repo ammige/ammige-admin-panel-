@@ -1,6 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import {
+  Box, Stack, TextField, FormControl, InputLabel, Select, MenuItem,
+  FormControlLabel, Switch, Chip, Button, Typography,
+} from '@mui/material';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 
 const fmtRs = (n) => 'Rs ' + Number(n || 0).toLocaleString('en-PK');
 const fmtDate = (iso) => {
@@ -27,7 +32,6 @@ async function prepImage(file, maxDim = 1600) {
   return blob ? new File([blob], file.name.replace(/\.\w+$/, type === 'image/png' ? '.png' : '.jpg'), { type }) : file;
 }
 
-
 async function uploadFile(file, maxDim, kind = 'image') {
   const fd = new FormData();
   if (kind === 'image' || kind === 'frame') {
@@ -42,8 +46,6 @@ async function uploadFile(file, maxDim, kind = 'image') {
   if (!r.ok) throw new Error(d.error || 'Upload failed');
   return d.url;
 }
-
-/** Small upload button used next to URL inputs. */
 
 function toPKTInput(utcISO) {
   if (!utcISO) return '';
@@ -74,8 +76,6 @@ function formatPKT(utcISO) {
   return `${p.getUTCDate()} ${months[p.getUTCMonth()]} ${p.getUTCFullYear()}, ${pad(h)}:${pad(p.getUTCMinutes())} ${ap} PKT`;
 }
 
-/** Status + active + schedule fields used by every content type. */
-
 async function apiContent(method, url, body) {
   const r = await fetch(url, {
     method,
@@ -87,18 +87,7 @@ async function apiContent(method, url, body) {
   return d;
 }
 
-/* ------------------------------------------------------------------ */
-/* Site settings (Phase 1: identity, theme, maintenance, SEO)          */
-/* ------------------------------------------------------------------ */
-
-const FONT_CHOICES = [
-  { id: 'cormorant-inter', label: 'Cormorant Garamond + Inter (current)' },
-  { id: 'playfair-montserrat', label: 'Playfair Display + Montserrat' },
-  { id: 'jost-jost', label: 'Jost (geometric sans)' },
-  { id: 'poppins-poppins', label: 'Poppins (rounded sans)' },
-];
-
-
+/** Status + active + schedule fields used by every content type (MUI). */
 function ScheduleFields({ value, onChange }) {
   const v = value || {};
   const set = (k) => (e) => {
@@ -107,47 +96,59 @@ function ScheduleFields({ value, onChange }) {
   };
   const setDate = (k) => (e) => onChange({ ...v, [k]: fromPKTInput(e.target.value) });
   return (
-    <div className="f-row" style={{ gap: 12, flexWrap: 'wrap' }}>
-      <div className="f-group" style={{ minWidth: 130 }}>
-        <label>Status</label>
-        <select value={v.status || 'published'} onChange={set('status')}>
-          <option value="published">Published</option>
-          <option value="draft">Draft</option>
-          <option value="scheduled">Scheduled</option>
-        </select>
-      </div>
-      <div className="f-group" style={{ minWidth: 110, justifyContent: 'flex-end' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-          <input type="checkbox" checked={v.active !== 0} onChange={set('active')} /> Active
-        </label>
-      </div>
-      <div className="f-group" style={{ minWidth: 200 }}>
-        <label>Start (PKT, optional)</label>
-        <input type="datetime-local" value={toPKTInput(v.starts_at)} onChange={setDate('starts_at')} />
-      </div>
-      <div className="f-group" style={{ minWidth: 200 }}>
-        <label>End (PKT, optional)</label>
-        <input type="datetime-local" value={toPKTInput(v.ends_at)} onChange={setDate('ends_at')} />
-      </div>
-    </div>
+    <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap sx={{ my: 1 }}>
+      <FormControl size="small" sx={{ minWidth: 150 }}>
+        <InputLabel>Status</InputLabel>
+        <Select value={v.status || 'published'} label="Status" onChange={set('status')}>
+          <MenuItem value="published">Published</MenuItem>
+          <MenuItem value="draft">Draft</MenuItem>
+          <MenuItem value="scheduled">Scheduled</MenuItem>
+        </Select>
+      </FormControl>
+      <FormControlLabel
+        control={<Switch checked={v.active !== 0} onChange={set('active')} />}
+        label="Active"
+      />
+      <TextField
+        type="datetime-local"
+        label="Start (PKT, optional)"
+        InputLabelProps={{ shrink: true }}
+        value={toPKTInput(v.starts_at)}
+        onChange={setDate('starts_at')}
+        sx={{ minWidth: 210, width: 'auto' }}
+      />
+      <TextField
+        type="datetime-local"
+        label="End (PKT, optional)"
+        InputLabelProps={{ shrink: true }}
+        value={toPKTInput(v.ends_at)}
+        onChange={setDate('ends_at')}
+        sx={{ minWidth: 210, width: 'auto' }}
+      />
+    </Stack>
   );
 }
 
-/** Live-status pill for content lists. */
-
+/** Live-status pill for content lists (MUI Chip). */
 function LivePill({ block }) {
   const now = new Date().toISOString();
   let label = 'Live', color = '#2E7D32';
-  if (Number(block.active) !== 1) { label = 'Off'; color = '#777'; }
+  if (Number(block.active) !== 1) { label = 'Off'; color = '#777777'; }
   else if (block.status === 'draft') { label = 'Draft'; color = '#B07D2B'; }
   else if (block.starts_at && block.starts_at > now) { label = `Starts ${formatPKT(block.starts_at)}`; color = '#1565C0'; }
   else if (block.ends_at && block.ends_at <= now) { label = 'Expired'; color = '#B3402E'; }
   else if (block.status === 'scheduled') { label = 'Scheduled'; color = '#1565C0'; }
-  return <span style={{ fontSize: 12, fontWeight: 600, color, background: `${color}14`, border: `1px solid ${color}44`, borderRadius: 999, padding: '2px 10px', whiteSpace: 'nowrap' }}>{label}</span>;
+  return (
+    <Chip
+      size="small"
+      label={label}
+      sx={{ color, borderColor: `${color}66`, bgcolor: `${color}14`, fontWeight: 600 }}
+      variant="outlined"
+    />
+  );
 }
 
-/** Image field with upload + preview + alt text. */
-
+/** Image field with upload + preview + alt text (MUI). */
 function AdminImageField({ label, value, alt, onChange, onAltChange, hint }) {
   const [busy, setBusy] = useState(false);
   const pick = () => {
@@ -167,28 +168,35 @@ function AdminImageField({ label, value, alt, onChange, onAltChange, hint }) {
     inp.click();
   };
   return (
-    <div className="f-group">
-      <label>{label}</label>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-        <input value={value || ''} onChange={(e) => onChange(e.target.value)}
-          placeholder="Upload or paste image URL" style={{ flex: 1 }} />
-        <button type="button" className="btn btn-outline btn-sm" onClick={pick} disabled={busy} style={{ whiteSpace: 'nowrap' }}>
-          {busy ? '…' : '📤 Upload'}
-        </button>
-      </div>
+    <Box sx={{ mb: 2 }}>
+      <Stack direction="row" spacing={1} alignItems="flex-start">
+        <TextField
+          label={label}
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Upload or paste image URL"
+        />
+        <Button variant="outlined" startIcon={<CloudUploadIcon />} onClick={pick} disabled={busy} sx={{ whiteSpace: 'nowrap', height: 40 }}>
+          {busy ? 'Uploading…' : 'Upload'}
+        </Button>
+      </Stack>
       {onAltChange && (
-        <input value={alt || ''} onChange={(e) => onAltChange(e.target.value)}
-          placeholder="Alt text (accessibility)" style={{ marginTop: 8 }} />
+        <TextField
+          label="Alt text (accessibility)"
+          value={alt || ''}
+          onChange={(e) => onAltChange(e.target.value)}
+          sx={{ mt: 1 }}
+        />
       )}
       {value ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={value} alt={alt || label} className="ad-img-preview" />
+        <Box component="img" src={value} alt={alt || label}
+          sx={{ mt: 1, maxWidth: 200, maxHeight: 150, objectFit: 'cover', borderRadius: 2, border: '1px solid #E8E2D6', display: 'block' }} />
       ) : hint ? (
-        <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{hint}</p>
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>{hint}</Typography>
       ) : null}
-    </div>
+    </Box>
   );
 }
-
 
 export { fmtRs, fmtDate, prepImage, uploadFile, toPKTInput, fromPKTInput, formatPKT, apiContent, ScheduleFields, LivePill, AdminImageField };

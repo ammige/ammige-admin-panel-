@@ -1,22 +1,47 @@
 'use client';
 
 import { Fragment, useCallback, useEffect, useState } from 'react';
+import {
+  Box, Stack, Paper, Card, CardContent, Button, TextField, FormControl, InputLabel,
+  Select, MenuItem, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Chip, Pagination, Dialog, DialogTitle, DialogContent, DialogActions, Alert, Typography,
+  IconButton, CircularProgress, Divider, Switch, FormControlLabel, ToggleButton,
+  ToggleButtonGroup, List, ListItemButton, InputAdornment,
+} from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
+import DownloadIcon from '@mui/icons-material/Download';
+import AddIcon from '@mui/icons-material/Add';
+import PrintIcon from '@mui/icons-material/Print';
+import CloseIcon from '@mui/icons-material/Close';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { fmtRs, fmtDate } from './shared';
 
 const STATUSES = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
 const NEXT_STATUS = { pending: 'confirmed', confirmed: 'shipped', shipped: 'delivered' };
+const STATUS_COLOR = { pending: 'warning', confirmed: 'info', shipped: 'primary', delivered: 'success', cancelled: 'error' };
+
+const StatusChip = ({ status }) => (
+  <Chip size="small" label={status} color={STATUS_COLOR[status] || 'default'} sx={{ textTransform: 'capitalize' }} />
+);
+
+const Row = ({ children, cols = 2 }) => (
+  <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: `repeat(${cols}, 1fr)` }, mb: 2 }}>{children}</Box>
+);
+
+const SectionTitle = ({ children }) => (
+  <Typography variant="subtitle2" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.08em', mb: 1 }}>{children}</Typography>
+);
 
 function ChangeBadge({ v }) {
   if (v === null || v === undefined) return null;
   const up = v > 0;
   const flat = v === 0;
   return (
-    <small style={{ color: flat ? 'var(--muted)' : up ? '#1E7A46' : '#B3402E', fontWeight: 600 }}>
+    <Typography variant="caption" sx={{ color: flat ? 'text.secondary' : up ? '#1E7A46' : '#B3402E', fontWeight: 600, display: 'block', mt: 0.5 }}>
       {flat ? '—' : up ? `▲ ${v}%` : `▼ ${Math.abs(v)}%`} <span style={{ fontWeight: 400 }}>vs prev</span>
-    </small>
+    </Typography>
   );
 }
-
 
 function RevenueChart({ series }) {
   const W = 720, H = 220, PAD = 36;
@@ -58,6 +83,17 @@ function RevenueChart({ series }) {
   );
 }
 
+function StatCard({ label, value, children }) {
+  return (
+    <Card>
+      <CardContent>
+        <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>{label}</Typography>
+        <Typography variant="h5" sx={{ mt: 0.5 }}>{value}</Typography>
+        {children}
+      </CardContent>
+    </Card>
+  );
+}
 
 function Dashboard() {
   const [range, setRange] = useState('7d');
@@ -72,99 +108,109 @@ function Dashboard() {
       .catch(() => setLoading(false));
   }, [range]);
 
-  if (loading || !d) return <div className="empty"><div className="display">Loading...</div></div>;
+  if (loading || !d) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>;
   const k = d.kpis || {};
   const ch = d.change || {};
 
   return (
-    <>
-      <div className="toolbar" style={{ marginTop: 0 }}>
-        <div className="chips">
-          {[['today', 'Today'], ['7d', 'Last 7 days'], ['30d', 'Last 30 days']].map(([v, label]) => (
-            <button key={v} className={`chip ${range === v ? 'on' : ''}`} onClick={() => setRange(v)}>{label}</button>
-          ))}
-        </div>
-        <a className="btn btn-outline btn-sm" href="/api/admin/export?type=orders">↓ Orders CSV</a>
-      </div>
+    <Box>
+      <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 2.5 }}>
+        <ToggleButtonGroup value={range} exclusive onChange={(_, v) => v && setRange(v)} size="small">
+          <ToggleButton value="today">Today</ToggleButton>
+          <ToggleButton value="7d">Last 7 days</ToggleButton>
+          <ToggleButton value="30d">Last 30 days</ToggleButton>
+        </ToggleButtonGroup>
+        <Box sx={{ flex: 1 }} />
+        <Button variant="outlined" startIcon={<DownloadIcon />} href="/api/admin/export?type=orders">Orders CSV</Button>
+      </Stack>
 
-      <div className="stat-grid">
-        <div className="stat"><small>Revenue</small><b>{fmtRs(k.revenue)}</b><ChangeBadge v={ch.revenue} /></div>
-        <div className="stat"><small>Orders</small><b>{k.orders}</b><ChangeBadge v={ch.orders} /></div>
-        <div className="stat"><small>Avg. Order Value</small><b>{fmtRs(k.aov)}</b></div>
-        <div className="stat"><small>Pending Orders</small><b>{k.pending}</b></div>
-      </div>
+      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' } }}>
+        <StatCard label="Revenue" value={fmtRs(k.revenue)}><ChangeBadge v={ch.revenue} /></StatCard>
+        <StatCard label="Orders" value={k.orders}><ChangeBadge v={ch.orders} /></StatCard>
+        <StatCard label="Avg. Order Value" value={fmtRs(k.aov)} />
+        <StatCard label="Pending Orders" value={k.pending} />
+      </Box>
 
-      <div className="admin-card" style={{ marginTop: 20 }}>
-        <h3 className="display" style={{ fontSize: 22, marginBottom: 12 }}>Revenue</h3>
-        <RevenueChart series={d.series} />
-      </div>
+      <Card sx={{ mt: 2.5 }}>
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 1.5 }}>Revenue</Typography>
+          <RevenueChart series={d.series} />
+        </CardContent>
+      </Card>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20, marginTop: 20 }}>
-        <div className="admin-card">
-          <h3 className="display" style={{ fontSize: 22, marginBottom: 12 }}>Order Pipeline</h3>
-          {STATUSES.map((s) => (
-            <div key={s} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #F1E9DA' }}>
-              <span className={`pill ${s}`} style={{ textTransform: 'capitalize' }}>{s}</span>
-              <b>{d.statusBreakdown?.[s] || 0}</b>
-            </div>
-          ))}
-        </div>
-
-        <div className="admin-card">
-          <h3 className="display" style={{ fontSize: 22, marginBottom: 12 }}>
-            Top Products <small style={{ color: 'var(--muted)' }}>({range === 'today' ? 'today' : range === '7d' ? '7 days' : '30 days'})</small>
-          </h3>
-          {!(d.topProducts || []).length && <p style={{ color: 'var(--muted)' }}>No sales in this period yet.</p>}
-          {(d.topProducts || []).map((p, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #F1E9DA', gap: 8 }}>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                <b style={{ color: '#C29B4B', marginRight: 8 }}>#{i + 1}</b>{p.name}
-              </span>
-              <b style={{ whiteSpace: 'nowrap' }}>{p.qty} sold · {fmtRs(p.revenue)}</b>
-            </div>
-          ))}
-        </div>
-
-        <div className="admin-card">
-          <h3 className="display" style={{ fontSize: 22, marginBottom: 12 }}>
-            Low Stock <small style={{ color: '#B3402E' }}>({(d.lowStock || []).length})</small>
-          </h3>
-          {(d.lowStock || []).length === 0 && <p style={{ color: 'var(--muted)' }}>All stocked up. 🎉</p>}
-          {(d.lowStock || []).map((p) => (
-            <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #F1E9DA', gap: 8 }}>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
-              <b style={{ color: p.stock === 0 ? '#B3402E' : '#9C7A33', whiteSpace: 'nowrap' }}>
-                {p.stock === 0 ? 'OUT' : `${p.stock} left`}
-              </b>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="admin-card" style={{ marginTop: 20, overflowX: 'auto', padding: 12 }}>
-        <h3 className="display" style={{ fontSize: 22, marginBottom: 12, padding: '0 12px' }}>Recent Orders</h3>
-        <table className="tbl">
-          <thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>Status</th></tr></thead>
-          <tbody>
-            {(d.recentOrders || []).map((o) => (
-              <tr key={o.id}>
-                <td><b>#{o.id}</b><br /><small style={{ color: 'var(--muted)' }}>{fmtDate(o.created_at)}</small></td>
-                <td style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.customer?.name}</td>
-                <td>{fmtRs(o.total)}</td>
-                <td><span className={`pill ${o.status}`}>{o.status}</span></td>
-              </tr>
+      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, mt: 2.5, alignItems: 'start' }}>
+        <Card>
+          <CardContent>
+            <Typography variant="h6" sx={{ mb: 1 }}>Order Pipeline</Typography>
+            {STATUSES.map((s) => (
+              <Stack key={s} direction="row" justifyContent="space-between" alignItems="center" sx={{ py: 1, borderBottom: '1px solid #F1E9DA' }}>
+                <StatusChip status={s} />
+                <Typography fontWeight={700}>{d.statusBreakdown?.[s] || 0}</Typography>
+              </Stack>
             ))}
-          </tbody>
-        </table>
-      </div>
-    </>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Top Products <Typography component="span" variant="body2" color="text.secondary">({range === 'today' ? 'today' : range === '7d' ? '7 days' : '30 days'})</Typography>
+            </Typography>
+            {!(d.topProducts || []).length && <Typography color="text.secondary">No sales in this period yet.</Typography>}
+            {(d.topProducts || []).map((p, i) => (
+              <Stack key={i} direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ py: 1, borderBottom: '1px solid #F1E9DA' }}>
+                <Typography variant="body2" noWrap><b style={{ color: '#C29B4B', marginRight: 8 }}>#{i + 1}</b>{p.name}</Typography>
+                <Typography variant="body2" fontWeight={700} sx={{ whiteSpace: 'nowrap' }}>{p.qty} sold · {fmtRs(p.revenue)}</Typography>
+              </Stack>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Low Stock <Typography component="span" variant="body2" color="error">({(d.lowStock || []).length})</Typography>
+            </Typography>
+            {(d.lowStock || []).length === 0 && <Typography color="text.secondary">All stocked up. 🎉</Typography>}
+            {(d.lowStock || []).map((p) => (
+              <Stack key={p.id} direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ py: 1, borderBottom: '1px solid #F1E9DA' }}>
+                <Typography variant="body2" noWrap>{p.name}</Typography>
+                <Typography variant="body2" fontWeight={700} sx={{ color: p.stock === 0 ? '#B3402E' : '#9C7A33', whiteSpace: 'nowrap' }}>
+                  {p.stock === 0 ? 'OUT' : `${p.stock} left`}
+                </Typography>
+              </Stack>
+            ))}
+          </CardContent>
+        </Card>
+      </Box>
+
+      <Card sx={{ mt: 2.5 }}>
+        <CardContent sx={{ px: 0 }}>
+          <Typography variant="h6" sx={{ px: 2, mb: 1 }}>Recent Orders</Typography>
+          <TableContainer>
+            <Table>
+              <TableHead><TableRow><TableCell>Order</TableCell><TableCell>Customer</TableCell><TableCell>Total</TableCell><TableCell>Status</TableCell></TableRow></TableHead>
+              <TableBody>
+                {(d.recentOrders || []).map((o) => (
+                  <TableRow key={o.id} hover>
+                    <TableCell><b>#{o.id}</b><br /><Typography variant="caption" color="text.secondary">{fmtDate(o.created_at)}</Typography></TableCell>
+                    <TableCell sx={{ maxWidth: 180 }}><Typography variant="body2" noWrap>{o.customer?.name}</Typography></TableCell>
+                    <TableCell>{fmtRs(o.total)}</TableCell>
+                    <TableCell><StatusChip status={o.status} /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </CardContent>
+      </Card>
+    </Box>
   );
 }
 
 /* ------------------------------------------------------------------ */
 /* Orders                                                               */
 /* ------------------------------------------------------------------ */
-
 
 function Orders({ onPrint }) {
   const [orders, setOrders] = useState([]);
@@ -200,57 +246,73 @@ function Orders({ onPrint }) {
   };
 
   return (
-    <>
-      <div className="toolbar" style={{ marginTop: 0, flexWrap: 'wrap' }}>
-        <div className="search" style={{ minWidth: 200 }}>
-          <input placeholder="Search id / name / phone..." value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search orders" />
-        </div>
-        <select value={payment} onChange={(e) => setPayment(e.target.value)} aria-label="Payment filter" style={{ width: 'auto' }}>
-          <option value="">All payments</option>
-          <option value="cod">COD</option>
-          <option value="bank">Bank</option>
-        </select>
-        <a className="btn btn-outline btn-sm" href="/api/admin/export?type=orders">↓ CSV</a>
-      </div>
-      <div className="chips" style={{ marginBottom: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+    <Box>
+      <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap alignItems="center" sx={{ mb: 2 }}>
+        <TextField
+          placeholder="Search id / name / phone…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          sx={{ width: { xs: '100%', sm: 280 } }}
+          InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>) }}
+        />
+        <FormControl size="small" sx={{ minWidth: 150 }}>
+          <InputLabel>Payment</InputLabel>
+          <Select value={payment} label="Payment" onChange={(e) => setPayment(e.target.value)}>
+            <MenuItem value="">All payments</MenuItem>
+            <MenuItem value="cod">COD</MenuItem>
+            <MenuItem value="bank">Bank</MenuItem>
+          </Select>
+        </FormControl>
+        <Box sx={{ flex: 1 }} />
+        <Button variant="outlined" startIcon={<DownloadIcon />} href="/api/admin/export?type=orders">CSV</Button>
+      </Stack>
+
+      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
         {[['', 'All'], ...STATUSES.map((s) => [s, s])].map(([v, label]) => (
-          <button key={v} className={`chip ${status === v ? 'on' : ''}`} onClick={() => setStatus(v)} style={{ textTransform: 'capitalize' }}>
-            {label}
-          </button>
+          <Chip
+            key={v}
+            label={label}
+            onClick={() => setStatus(v)}
+            color={status === v ? (STATUS_COLOR[v] || 'primary') : 'default'}
+            variant={status === v ? 'filled' : 'outlined'}
+            sx={{ textTransform: 'capitalize' }}
+          />
         ))}
-      </div>
+      </Stack>
 
-      <div className="admin-card" style={{ overflowX: 'auto', padding: 12 }}>
-        <table className="tbl">
-          <thead><tr><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Pay</th><th>Status</th><th></th></tr></thead>
-          <tbody>
+      <TableContainer component={Paper} sx={{ border: '1px solid #E8E2D6' }}>
+        <Table>
+          <TableHead><TableRow><TableCell>Order</TableCell><TableCell>Customer</TableCell><TableCell>Items</TableCell><TableCell>Total</TableCell><TableCell>Pay</TableCell><TableCell>Status</TableCell><TableCell align="right"></TableCell></TableRow></TableHead>
+          <TableBody>
             {orders.map((o) => (
-              <tr key={o.id}>
-                <td><b>#{o.id}</b><br /><small style={{ color: 'var(--muted)', whiteSpace: 'nowrap' }}>{fmtDate(o.created_at)}</small></td>
-                <td style={{ maxWidth: 170 }}>
-                  <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.customer?.name}</span>
-                  <small style={{ color: 'var(--muted)' }}>{o.customer?.phone}</small>
-                </td>
-                <td>{o.items?.reduce((s, i) => s + i.qty, 0)}</td>
-                <td style={{ whiteSpace: 'nowrap' }}>{fmtRs(o.total)}{o.discount ? <><br /><small style={{ color: '#1E7A46' }}>−{fmtRs(o.discount)} coupon</small></> : null}</td>
-                <td style={{ textTransform: 'uppercase', fontSize: 12 }}>{o.payment}</td>
-                <td><span className={`pill ${o.status}`}>{o.status}</span></td>
-                <td style={{ whiteSpace: 'nowrap' }}>
-                  <button className="btn btn-outline btn-sm" onClick={() => openDetail(o.id)}>View</button>
-                </td>
-              </tr>
+              <TableRow key={o.id} hover>
+                <TableCell><b>#{o.id}</b><br /><Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>{fmtDate(o.created_at)}</Typography></TableCell>
+                <TableCell sx={{ maxWidth: 180 }}>
+                  <Typography variant="body2" noWrap>{o.customer?.name}</Typography>
+                  <Typography variant="caption" color="text.secondary">{o.customer?.phone}</Typography>
+                </TableCell>
+                <TableCell>{o.items?.reduce((s, i) => s + i.qty, 0)}</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                  {fmtRs(o.total)}
+                  {o.discount ? <><br /><Typography variant="caption" sx={{ color: '#1E7A46' }}>−{fmtRs(o.discount)} coupon</Typography></> : null}
+                </TableCell>
+                <TableCell sx={{ textTransform: 'uppercase', fontSize: 12 }}>{o.payment}</TableCell>
+                <TableCell><StatusChip status={o.status} /></TableCell>
+                <TableCell align="right"><Button size="small" variant="outlined" onClick={() => openDetail(o.id)}>View</Button></TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-        {loading && <div className="empty"><div className="display">Loading...</div></div>}
-        {!loading && orders.length === 0 && <div className="empty"><div className="display">No orders found</div></div>}
-      </div>
+            {!loading && orders.length === 0 && (
+              <TableRow><TableCell colSpan={7} align="center" sx={{ py: 5 }}><Typography color="text.secondary">No orders found</Typography></TableCell></TableRow>
+            )}
+          </TableBody>
+        </Table>
+        {loading && <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress size={28} /></Box>}
+      </TableContainer>
 
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 20, alignItems: 'center' }}>
-        <button className="btn btn-outline btn-sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</button>
-        <span style={{ fontSize: 14 }}>Page {page} of {pages} · {total} orders</span>
-        <button className="btn btn-outline btn-sm" disabled={page >= pages} onClick={() => setPage(page + 1)}>Next</button>
-      </div>
+      <Stack direction="row" spacing={2} justifyContent="center" alignItems="center" sx={{ mt: 2.5 }}>
+        <Pagination count={pages} page={page} onChange={(_, v) => setPage(v)} color="primary" shape="rounded" />
+        <Typography variant="body2" color="text.secondary">{total} orders</Typography>
+      </Stack>
 
       {detail && (
         <OrderDetail
@@ -260,10 +322,9 @@ function Orders({ onPrint }) {
           onPrint={onPrint}
         />
       )}
-    </>
+    </Box>
   );
 }
-
 
 function OrderDetail({ order, onClose, onUpdated, onPrint }) {
   const [o, setO] = useState(order);
@@ -312,126 +373,112 @@ function OrderDetail({ order, onClose, onUpdated, onPrint }) {
 
   const subtotal = (o.items || []).reduce((s, i) => s + i.price * i.qty, 0);
   const shipping = Math.max(0, o.total - (subtotal - (o.discount || 0)));
+  const flow = ['pending', 'confirmed', 'shipped', 'delivered'];
+  const cur = flow.indexOf(o.status);
 
   return (
-    <div className="cart-overlay open" onClick={onClose}>
-      <div
-        className="admin-card"
-        style={{ maxWidth: 720, margin: '32px auto', maxHeight: '88vh', overflowY: 'auto', position: 'relative' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 8, flexWrap: 'wrap' }}>
-          <h2 className="display" style={{ fontSize: 26, margin: 0 }}>Order #{o.id}</h2>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-outline btn-sm" onClick={() => onPrint(o)}>🖨 Print Invoice</button>
-            <button className="btn btn-outline btn-sm" onClick={onClose}>Close</button>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
-          <span className={`pill ${o.status}`} style={{ fontSize: 14 }}>{o.status}</span>
-          <small style={{ color: 'var(--muted)' }}>{fmtDate(o.created_at)} · {o.payment?.toUpperCase()}</small>
+    <Dialog open onClose={onClose} maxWidth="md" fullWidth scroll="paper">
+      <DialogTitle sx={{ pr: 14 }}>
+        Order #{o.id}
+        <Stack direction="row" spacing={1} sx={{ position: 'absolute', right: 12, top: 12 }}>
+          <Button size="small" variant="outlined" startIcon={<PrintIcon />} onClick={() => onPrint(o)}>Invoice</Button>
+          <IconButton onClick={onClose} aria-label="Close"><CloseIcon /></IconButton>
+        </Stack>
+      </DialogTitle>
+      <DialogContent dividers>
+        <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+          <StatusChip status={o.status} />
+          <Typography variant="body2" color="text.secondary">{fmtDate(o.created_at)} · {o.payment?.toUpperCase()}</Typography>
+          <Box sx={{ flex: 1 }} />
           {NEXT_STATUS[o.status] && (
-            <button className="btn btn-gold btn-sm" disabled={saving} onClick={advance} style={{ marginLeft: 'auto' }}>
+            <Button variant="contained" size="small" disabled={saving} onClick={advance}>
               Mark as {NEXT_STATUS[o.status]} →
-            </button>
+            </Button>
           )}
           {o.status !== 'cancelled' && o.status !== 'delivered' && (
-            <button className="btn btn-outline btn-sm" disabled={saving} onClick={cancel} style={{ color: '#B3402E' }}>
-              Cancel order
-            </button>
+            <Button variant="outlined" size="small" color="error" disabled={saving} onClick={cancel}>Cancel order</Button>
           )}
-        </div>
+        </Stack>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 16 }}>
-          <div>
-            <h4 style={{ margin: '0 0 8px', fontSize: 14, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--muted)' }}>Customer</h4>
-            <b>{o.customer?.name}</b><br />
-            <span style={{ overflowWrap: 'anywhere' }}>{o.customer?.phone}</span><br />
-            <span style={{ color: 'var(--muted)' }}>{o.customer?.address}, {o.customer?.city}</span>
-          </div>
-          <div>
-            <h4 style={{ margin: '0 0 8px', fontSize: 14, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--muted)' }}>Fulfillment</h4>
-            <div className="f-group" style={{ marginBottom: 8 }}>
-              <label>Courier</label>
-              <select value={courier} onChange={(e) => setCourier(e.target.value)}>
-                <option value="">— Select —</option>
-                <option value="TCS">TCS</option>
-                <option value="Leopards">Leopards</option>
-                <option value="PostEx">PostEx</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-            <div className="f-group" style={{ marginBottom: 0 }}>
-              <label>Tracking number</label>
-              <input value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder="e.g. 123456789" />
-            </div>
-          </div>
-        </div>
+        <Row>
+          <Box>
+            <SectionTitle>Customer</SectionTitle>
+            <Typography fontWeight={700}>{o.customer?.name}</Typography>
+            <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>{o.customer?.phone}</Typography>
+            <Typography variant="body2" color="text.secondary">{o.customer?.address}, {o.customer?.city}</Typography>
+          </Box>
+          <Box>
+            <SectionTitle>Fulfillment</SectionTitle>
+            <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
+              <InputLabel>Courier</InputLabel>
+              <Select value={courier} label="Courier" onChange={(e) => setCourier(e.target.value)}>
+                <MenuItem value="">— Select —</MenuItem>
+                <MenuItem value="TCS">TCS</MenuItem>
+                <MenuItem value="Leopards">Leopards</MenuItem>
+                <MenuItem value="PostEx">PostEx</MenuItem>
+                <MenuItem value="Other">Other</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField label="Tracking number" value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder="e.g. 123456789" />
+          </Box>
+        </Row>
 
-        <h4 style={{ margin: '0 0 8px', fontSize: 14, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--muted)' }}>Items</h4>
+        <SectionTitle>Items</SectionTitle>
         {(o.items || []).map((it, i) => (
-          <div key={i} className="order-line">
-            {it.image && <img src={it.image} alt={it.name} />}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <b style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.name}</b>
-              <span style={{ color: 'var(--muted)', fontSize: 13 }}>{it.sku ? `${it.sku} · ` : ''}Qty {it.qty} × {fmtRs(it.price)}</span>
-            </div>
-            <b style={{ whiteSpace: 'nowrap' }}>{fmtRs(it.price * it.qty)}</b>
-          </div>
+          <Stack key={i} direction="row" spacing={1.5} alignItems="center" sx={{ py: 1, borderBottom: '1px solid #F1E9DA' }}>
+            {it.image && <Box component="img" src={it.image} alt={it.name} sx={{ width: 40, height: 48, objectFit: 'cover', borderRadius: 1 }} />}
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="body2" fontWeight={600} noWrap>{it.name}</Typography>
+              <Typography variant="caption" color="text.secondary">{it.sku ? `${it.sku} · ` : ''}Qty {it.qty} × {fmtRs(it.price)}</Typography>
+            </Box>
+            <Typography variant="body2" fontWeight={700} sx={{ whiteSpace: 'nowrap' }}>{fmtRs(it.price * it.qty)}</Typography>
+          </Stack>
         ))}
 
-        <div style={{ marginTop: 12, borderTop: '1px solid #F1E9DA', paddingTop: 12, maxWidth: 320, marginLeft: 'auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span>Subtotal</span><span>{fmtRs(subtotal)}</span></div>
+        <Box sx={{ mt: 1.5, maxWidth: 320, ml: 'auto' }}>
+          <Stack direction="row" justifyContent="space-between" sx={{ py: 0.5 }}><Typography variant="body2">Subtotal</Typography><Typography variant="body2">{fmtRs(subtotal)}</Typography></Stack>
           {o.discount > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', color: '#1E7A46' }}>
-              <span>Coupon {o.coupon_code ? `(${o.coupon_code})` : ''}</span><span>−{fmtRs(o.discount)}</span>
-            </div>
+            <Stack direction="row" justifyContent="space-between" sx={{ py: 0.5, color: '#1E7A46' }}>
+              <Typography variant="body2">Coupon {o.coupon_code ? `(${o.coupon_code})` : ''}</Typography><Typography variant="body2">−{fmtRs(o.discount)}</Typography>
+            </Stack>
           )}
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span>Shipping</span><span>{shipping === 0 ? 'FREE' : fmtRs(shipping)}</span></div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontWeight: 700, fontSize: 18, borderTop: '1px solid #F1E9DA', marginTop: 4 }}>
-            <span>Total</span><span>{fmtRs(o.total)}</span>
-          </div>
-        </div>
+          <Stack direction="row" justifyContent="space-between" sx={{ py: 0.5 }}><Typography variant="body2">Shipping</Typography><Typography variant="body2">{shipping === 0 ? 'FREE' : fmtRs(shipping)}</Typography></Stack>
+          <Stack direction="row" justifyContent="space-between" sx={{ py: 1, borderTop: '1px solid #E8E2D6', mt: 0.5 }}>
+            <Typography fontWeight={700}>Total</Typography><Typography fontWeight={700} variant="h6">{fmtRs(o.total)}</Typography>
+          </Stack>
+        </Box>
 
-        {o.notes && <p style={{ marginTop: 12 }}><b>Customer note:</b> {o.notes}</p>}
+        {o.notes && <Typography variant="body2" sx={{ mt: 1.5 }}><b>Customer note:</b> {o.notes}</Typography>}
 
-        <div className="f-group" style={{ marginTop: 12 }}>
-          <label>Internal notes (not shown to customer)</label>
-          <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Customer asked for gift wrap" />
-        </div>
+        <Box sx={{ mt: 2 }}>
+          <TextField label="Internal notes (not shown to customer)" value={notes} onChange={(e) => setNotes(e.target.value)} multiline rows={2} placeholder="e.g. Customer asked for gift wrap" />
+        </Box>
 
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 8 }}>
-          <button className="btn btn-dark btn-sm" disabled={saving} onClick={() => patch({ courier: courier || null, tracking_number: tracking || null, admin_notes: notes || null })}>
-            {saving ? 'Saving...' : 'Save courier / notes'}
-          </button>
-          {msg && <small style={{ color: msg.includes('✓') ? '#1E7A46' : '#B3402E' }}>{msg}</small>}
-        </div>
+        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 2 }}>
+          <Button variant="contained" disabled={saving} onClick={() => patch({ courier: courier || null, tracking_number: tracking || null, admin_notes: notes || null })}>
+            {saving ? 'Saving…' : 'Save courier / notes'}
+          </Button>
+          {msg && <Typography variant="body2" sx={{ color: msg.includes('✓') ? '#1E7A46' : '#B3402E' }}>{msg}</Typography>}
+        </Stack>
 
-        <div style={{ marginTop: 16 }}>
-          <h4 style={{ margin: '0 0 8px', fontSize: 14, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--muted)' }}>Status timeline</h4>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {STATUSES.filter((s) => s !== 'cancelled').map((s) => {
-              const order = ['pending', 'confirmed', 'shipped', 'delivered'];
-              const cur = order.indexOf(o.status);
-              const idx = order.indexOf(s);
-              const done = o.status === 'cancelled' ? false : idx <= cur;
-              return (
-                <span key={s} className="pill" style={done ? { background: '#1E7A46', color: '#fff' } : {}}>{s}</span>
-              );
-            })}
-            {o.status === 'cancelled' && <span className="pill cancelled">cancelled</span>}
-          </div>
-        </div>
-      </div>
-    </div>
+        <Box sx={{ mt: 2.5 }}>
+          <SectionTitle>Status timeline</SectionTitle>
+          <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+            {o.status === 'cancelled' ? (
+              <Chip label="cancelled" color="error" size="small" sx={{ textTransform: 'capitalize' }} />
+            ) : flow.map((s, idx) => (
+              <Chip key={s} label={s} size="small" color={idx <= cur ? 'success' : 'default'} variant={idx <= cur ? 'filled' : 'outlined'} sx={{ textTransform: 'capitalize' }} />
+            ))}
+          </Stack>
+        </Box>
+      </DialogContent>
+    </Dialog>
   );
 }
 
 /* ------------------------------------------------------------------ */
 /* Printable invoice                                                    */
 /* ------------------------------------------------------------------ */
-
 
 function InvoicePrint({ order, onBack }) {
   const [brand, setBrand] = useState({ brand: 'AMMIGE', tagline: '', whatsapp: '' });
@@ -447,7 +494,7 @@ function InvoicePrint({ order, onBack }) {
   const shipping = Math.max(0, o.total - (subtotal - (o.discount || 0)));
 
   return (
-    <>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', p: 2 }}>
       <style>{`
         @media print {
           body * { visibility: hidden; }
@@ -460,11 +507,11 @@ function InvoicePrint({ order, onBack }) {
         #invoice-sheet th, #invoice-sheet td { border-bottom: 1px solid #ddd; padding: 8px 4px; text-align: left; font-size: 14px; }
         #invoice-sheet th { text-transform: uppercase; font-size: 11px; letter-spacing: .08em; color: #666; }
       `}</style>
-      <div className="admin-wrap">
-        <div className="no-print" style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-          <button className="btn btn-outline btn-sm" onClick={onBack}>← Back</button>
-          <button className="btn btn-gold btn-sm" onClick={() => window.print()}>🖨 Print / Save PDF</button>
-        </div>
+      <Box sx={{ maxWidth: 760, mx: 'auto' }}>
+        <Stack direction="row" spacing={1} className="no-print" sx={{ mb: 2 }}>
+          <Button variant="outlined" size="small" startIcon={<ArrowBackIcon />} onClick={onBack}>Back</Button>
+          <Button variant="contained" size="small" startIcon={<PrintIcon />} onClick={() => window.print()}>Print / Save PDF</Button>
+        </Stack>
         <div id="invoice-sheet">
           <div style={{ textAlign: 'center', borderBottom: '2px solid #111', paddingBottom: 16, marginBottom: 16 }}>
             <div style={{ fontSize: 34, letterSpacing: '.35em', fontWeight: 700 }}>AMMIGE</div>
@@ -506,15 +553,14 @@ function InvoicePrint({ order, onBack }) {
             Thank you for shopping with AMMIGE — 7-day easy exchange, premium gift packaging.
           </p>
         </div>
-      </div>
-    </>
+      </Box>
+    </Box>
   );
 }
 
 /* ------------------------------------------------------------------ */
 /* Manual order (WhatsApp / phone sales)                                */
 /* ------------------------------------------------------------------ */
-
 
 function ManualOrder({ onCreated }) {
   const [customer, setCustomer] = useState({ name: '', phone: '', address: '', city: '' });
@@ -583,81 +629,87 @@ function ManualOrder({ onCreated }) {
   const setC = (k) => (e) => setCustomer({ ...customer, [k]: e.target.value });
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
-      <div className="admin-card">
-        <h3 className="display" style={{ fontSize: 22, marginBottom: 16 }}>Customer</h3>
-        <form onSubmit={submit}>
-          <div className="f-group"><label>Name *</label><input required value={customer.name} onChange={setC('name')} /></div>
-          <div className="f-group"><label>Phone *</label><input required value={customer.phone} onChange={setC('phone')} placeholder="03xx xxxxxxx" /></div>
-          <div className="f-group"><label>Address *</label><input required value={customer.address} onChange={setC('address')} /></div>
-          <div className="f-group"><label>City *</label><input required value={customer.city} onChange={setC('city')} /></div>
-          <div className="f-row">
-            <div className="f-group">
-              <label>Payment</label>
-              <select value={payment} onChange={(e) => setPayment(e.target.value)}>
-                <option value="cod">COD</option>
-                <option value="bank">Bank transfer</option>
-              </select>
-            </div>
-            <div className="f-group"><label>Coupon (optional)</label><input value={couponCode} onChange={(e) => setCouponCode(e.target.value)} placeholder="EID20" style={{ textTransform: 'uppercase' }} /></div>
-          </div>
-          <div className="f-group"><label>Notes</label><input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" /></div>
-          {error && <p style={{ color: '#B3402E', marginBottom: 12 }}>{error}</p>}
-          {done && <p style={{ color: '#1E7A46', marginBottom: 12 }}>✓ Order #{done.order_id} created — {fmtRs(done.total)}</p>}
-          <button className="btn btn-gold" type="submit" disabled={saving || lines.length === 0} style={{ width: '100%' }}>
-            {saving ? 'Creating...' : `Create Order · ${fmtRs(subtotal)}`}
-          </button>
-        </form>
-      </div>
+    <Box sx={{ display: 'grid', gap: 2.5, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, alignItems: 'start' }}>
+      <Card>
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 2 }}>Customer</Typography>
+          <Box component="form" onSubmit={submit}>
+            <Stack spacing={2}>
+              <TextField label="Name *" required value={customer.name} onChange={setC('name')} />
+              <TextField label="Phone *" required value={customer.phone} onChange={setC('phone')} placeholder="03xx xxxxxxx" />
+              <TextField label="Address *" required value={customer.address} onChange={setC('address')} />
+              <TextField label="City *" required value={customer.city} onChange={setC('city')} />
+              <Row>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Payment</InputLabel>
+                  <Select value={payment} label="Payment" onChange={(e) => setPayment(e.target.value)}>
+                    <MenuItem value="cod">COD</MenuItem>
+                    <MenuItem value="bank">Bank transfer</MenuItem>
+                  </Select>
+                </FormControl>
+                <TextField label="Coupon (optional)" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} placeholder="EID20" inputProps={{ style: { textTransform: 'uppercase' } }} />
+              </Row>
+              <TextField label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
+              {error && <Alert severity="error">{error}</Alert>}
+              {done && <Alert severity="success">Order #{done.order_id} created — {fmtRs(done.total)}</Alert>}
+              <Button variant="contained" size="large" type="submit" disabled={saving || lines.length === 0} fullWidth>
+                {saving ? 'Creating…' : `Create Order · ${fmtRs(subtotal)}`}
+              </Button>
+            </Stack>
+          </Box>
+        </CardContent>
+      </Card>
 
-      <div className="admin-card">
-        <h3 className="display" style={{ fontSize: 22, marginBottom: 16 }}>Products</h3>
-        <div className="search" style={{ marginBottom: 12 }}>
-          <input placeholder="Search products to add..." value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search products" />
-        </div>
-        {results.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => addLine(p)}
-            style={{ display: 'flex', gap: 10, alignItems: 'center', width: '100%', textAlign: 'left', background: '#FDFAF3', border: '1px solid #F1E9DA', borderRadius: 10, padding: 8, marginBottom: 8, cursor: 'pointer' }}
-          >
-            {p.image && <img src={p.image} alt="" style={{ width: 40, height: 48, objectFit: 'cover', borderRadius: 6 }} />}
-            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
-            <b style={{ whiteSpace: 'nowrap' }}>{fmtRs(p.price)}</b>
-            <span style={{ color: 'var(--muted)', fontSize: 12 }}>{p.stock} in stock</span>
-          </button>
-        ))}
-        {lines.length === 0 && <p style={{ color: 'var(--muted)' }}>No items yet — search and tap a product to add it.</p>}
-        {lines.map((l) => (
-          <div key={l.id} className="order-line">
-            {l.image && <img src={l.image} alt={l.name} />}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <b style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.name}</b>
-              <span style={{ color: 'var(--muted)', fontSize: 13 }}>{fmtRs(l.price)} each</span>
-            </div>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <button className="btn btn-outline btn-sm" onClick={() => setLines((ls) => ls.map((x) => (x.id === l.id ? { ...x, qty: Math.max(1, x.qty - 1) } : x)))}>−</button>
-              <b>{l.qty}</b>
-              <button className="btn btn-outline btn-sm" onClick={() => setLines((ls) => ls.map((x) => (x.id === l.id ? { ...x, qty: Math.min(10, x.qty + 1) } : x)))}>+</button>
-              <button className="btn btn-outline btn-sm" onClick={() => setLines((ls) => ls.filter((x) => x.id !== l.id))} aria-label="Remove">✕</button>
-            </div>
-            <b style={{ whiteSpace: 'nowrap' }}>{fmtRs(l.price * l.qty)}</b>
-          </div>
-        ))}
-        {lines.length > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, fontWeight: 700 }}>
-            <span>Subtotal</span><span>{fmtRs(subtotal)}</span>
-          </div>
-        )}
-      </div>
-    </div>
+      <Card>
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 2 }}>Products</Typography>
+          <TextField
+            placeholder="Search products to add…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            sx={{ mb: 1.5 }}
+            InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>) }}
+          />
+          {results.map((p) => (
+            <ListItemButton key={p.id} onClick={() => addLine(p)} sx={{ border: '1px solid #E8E2D6', borderRadius: 2, mb: 1, gap: 1.5 }}>
+              {p.image && <Box component="img" src={p.image} alt="" sx={{ width: 40, height: 48, objectFit: 'cover', borderRadius: 1 }} />}
+              <Typography variant="body2" sx={{ flex: 1, minWidth: 0 }} noWrap>{p.name}</Typography>
+              <Typography variant="body2" fontWeight={700} sx={{ whiteSpace: 'nowrap' }}>{fmtRs(p.price)}</Typography>
+              <Typography variant="caption" color="text.secondary">{p.stock} in stock</Typography>
+            </ListItemButton>
+          ))}
+          {lines.length === 0 && <Typography color="text.secondary" variant="body2">No items yet — search and tap a product to add it.</Typography>}
+          {lines.map((l) => (
+            <Stack key={l.id} direction="row" spacing={1.5} alignItems="center" sx={{ py: 1, borderBottom: '1px solid #F1E9DA' }}>
+              {l.image && <Box component="img" src={l.image} alt={l.name} sx={{ width: 40, height: 48, objectFit: 'cover', borderRadius: 1 }} />}
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography variant="body2" fontWeight={600} noWrap>{l.name}</Typography>
+                <Typography variant="caption" color="text.secondary">{fmtRs(l.price)} each</Typography>
+              </Box>
+              <Stack direction="row" spacing={0.5} alignItems="center">
+                <Button size="small" variant="outlined" sx={{ minWidth: 32 }} onClick={() => setLines((ls) => ls.map((x) => (x.id === l.id ? { ...x, qty: Math.max(1, x.qty - 1) } : x)))}>−</Button>
+                <Typography fontWeight={700} sx={{ minWidth: 20, textAlign: 'center' }}>{l.qty}</Typography>
+                <Button size="small" variant="outlined" sx={{ minWidth: 32 }} onClick={() => setLines((ls) => ls.map((x) => (x.id === l.id ? { ...x, qty: Math.min(10, x.qty + 1) } : x)))}>+</Button>
+                <IconButton size="small" color="error" onClick={() => setLines((ls) => ls.filter((x) => x.id !== l.id))} aria-label="Remove"><CloseIcon fontSize="small" /></IconButton>
+              </Stack>
+              <Typography variant="body2" fontWeight={700} sx={{ whiteSpace: 'nowrap' }}>{fmtRs(l.price * l.qty)}</Typography>
+            </Stack>
+          ))}
+          {lines.length > 0 && (
+            <Stack direction="row" justifyContent="space-between" sx={{ mt: 1.5 }}>
+              <Typography fontWeight={700}>Subtotal</Typography>
+              <Typography fontWeight={700}>{fmtRs(subtotal)}</Typography>
+            </Stack>
+          )}
+        </CardContent>
+      </Card>
+    </Box>
   );
 }
 
 /* ------------------------------------------------------------------ */
 /* Customers                                                            */
 /* ------------------------------------------------------------------ */
-
 
 function Customers() {
   const [list, setList] = useState([]);
@@ -685,54 +737,60 @@ function Customers() {
   };
 
   return (
-    <div className="admin-card" style={{ overflowX: 'auto', padding: 12 }}>
-      <div className="toolbar" style={{ marginTop: 0 }}>
-        <div className="search" style={{ minWidth: 220 }}>
-          <input placeholder="Search name / phone / city..." value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search customers" />
-        </div>
-      </div>
-      <table className="tbl">
-        <thead><tr><th>Customer</th><th>Phone</th><th>City</th><th>Orders</th><th>Total Spent</th><th>Last Order</th><th></th></tr></thead>
-        <tbody>
-          {list.map((c) => (
-            <Fragment key={c.phone}>
-              <tr>
-                <td style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name || '—'}</td>
-                <td style={{ whiteSpace: 'nowrap' }}>{c.phone}</td>
-                <td>{c.city || '—'}</td>
-                <td>{c.orders}</td>
-                <td style={{ whiteSpace: 'nowrap' }}>{fmtRs(c.total_spent)}</td>
-                <td style={{ whiteSpace: 'nowrap' }}>{c.last_order_id ? <>#{c.last_order_id} · {fmtDate(c.last_order)}</> : '—'}</td>
-                <td><button className="btn btn-outline btn-sm" onClick={() => openHistory(c.phone)}>{expanded === c.phone ? 'Hide' : 'History'}</button></td>
-              </tr>
-              {expanded === c.phone && (
-                <tr>
-                  <td colSpan={7} style={{ background: '#FDFAF3' }}>
-                    {history.length === 0 && <small style={{ color: 'var(--muted)' }}>Loading...</small>}
-                    {history.map((o) => (
-                      <div key={o.id} style={{ display: 'flex', gap: 12, padding: '6px 0', fontSize: 14, borderBottom: '1px solid #F1E9DA' }}>
-                        <b>#{o.id}</b>
-                        <span style={{ color: 'var(--muted)' }}>{fmtDate(o.created_at)}</span>
-                        <span className={`pill ${o.status}`}>{o.status}</span>
-                        <span style={{ marginLeft: 'auto' }}>{fmtRs(o.total)}</span>
-                      </div>
-                    ))}
-                  </td>
-                </tr>
-              )}
-            </Fragment>
-          ))}
-        </tbody>
-      </table>
-      {list.length === 0 && <div className="empty"><div className="display">No customers yet</div></div>}
-    </div>
+    <Box>
+      <TextField
+        placeholder="Search name / phone / city…"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        sx={{ mb: 2, width: { xs: '100%', sm: 320 } }}
+        InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>) }}
+      />
+      <TableContainer component={Paper} sx={{ border: '1px solid #E8E2D6' }}>
+        <Table>
+          <TableHead><TableRow><TableCell>Customer</TableCell><TableCell>Phone</TableCell><TableCell>City</TableCell><TableCell>Orders</TableCell><TableCell>Total Spent</TableCell><TableCell>Last Order</TableCell><TableCell align="right"></TableCell></TableRow></TableHead>
+          <TableBody>
+            {list.map((c) => (
+              <Fragment key={c.phone}>
+                <TableRow hover>
+                  <TableCell sx={{ maxWidth: 170 }}><Typography variant="body2" noWrap>{c.name || '—'}</Typography></TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{c.phone}</TableCell>
+                  <TableCell>{c.city || '—'}</TableCell>
+                  <TableCell>{c.orders}</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{fmtRs(c.total_spent)}</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{c.last_order_id ? <>#{c.last_order_id} · {fmtDate(c.last_order)}</> : '—'}</TableCell>
+                  <TableCell align="right"><Button size="small" variant="outlined" onClick={() => openHistory(c.phone)}>{expanded === c.phone ? 'Hide' : 'History'}</Button></TableCell>
+                </TableRow>
+                {expanded === c.phone && (
+                  <TableRow>
+                    <TableCell colSpan={7} sx={{ bgcolor: '#FBF9F4' }}>
+                      {history.length === 0 && <Typography variant="body2" color="text.secondary">Loading…</Typography>}
+                      {history.map((o) => (
+                        <Stack key={o.id} direction="row" spacing={1.5} alignItems="center" sx={{ py: 0.75, borderBottom: '1px solid #F1E9DA' }}>
+                          <Typography variant="body2" fontWeight={700}>#{o.id}</Typography>
+                          <Typography variant="body2" color="text.secondary">{fmtDate(o.created_at)}</Typography>
+                          <StatusChip status={o.status} />
+                          <Box sx={{ flex: 1 }} />
+                          <Typography variant="body2">{fmtRs(o.total)}</Typography>
+                        </Stack>
+                      ))}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </Fragment>
+            ))}
+            {list.length === 0 && (
+              <TableRow><TableCell colSpan={7} align="center" sx={{ py: 5 }}><Typography color="text.secondary">No customers yet</Typography></TableCell></TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Box>
   );
 }
 
 /* ------------------------------------------------------------------ */
 /* Coupons                                                              */
 /* ------------------------------------------------------------------ */
-
 
 function Coupons() {
   const [list, setList] = useState([]);
@@ -761,38 +819,38 @@ function Coupons() {
   const expired = (c) => c.expires_at && new Date(c.expires_at).getTime() < Date.now();
 
   return (
-    <>
-      <div className="toolbar" style={{ marginTop: 0 }}>
-        <p style={{ color: 'var(--muted)', margin: 0, fontSize: 14 }}>Discount codes for campaigns & influencers.</p>
-        <button className="btn btn-gold btn-sm" onClick={() => setEditing('new')}>+ New Coupon</button>
-      </div>
-      <div className="admin-card" style={{ overflowX: 'auto', padding: 12 }}>
-        <table className="tbl">
-          <thead><tr><th>Code</th><th>Discount</th><th>Min Order</th><th>Used</th><th>Expiry</th><th>Status</th><th></th></tr></thead>
-          <tbody>
+    <Box>
+      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+        <Typography color="text.secondary" variant="body2" sx={{ flex: 1 }}>Discount codes for campaigns & influencers.</Typography>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setEditing('new')}>New Coupon</Button>
+      </Stack>
+      <TableContainer component={Paper} sx={{ border: '1px solid #E8E2D6' }}>
+        <Table>
+          <TableHead><TableRow><TableCell>Code</TableCell><TableCell>Discount</TableCell><TableCell>Min Order</TableCell><TableCell>Used</TableCell><TableCell>Expiry</TableCell><TableCell>Status</TableCell><TableCell align="right">Actions</TableCell></TableRow></TableHead>
+          <TableBody>
             {list.map((c) => (
-              <tr key={c.id}>
-                <td><b style={{ letterSpacing: '.06em' }}>{c.code}</b></td>
-                <td style={{ whiteSpace: 'nowrap' }}>{c.type === 'percent' ? `${c.value}%` : fmtRs(c.value)}</td>
-                <td style={{ whiteSpace: 'nowrap' }}>{c.min_order ? fmtRs(c.min_order) : '—'}</td>
-                <td style={{ whiteSpace: 'nowrap' }}>{c.used_count}{c.usage_limit ? ` / ${c.usage_limit}` : ''}</td>
-                <td style={{ whiteSpace: 'nowrap' }}>{c.expires_at ? fmtDate(c.expires_at) : '—'}</td>
-                <td>
-                  <span className="pill" style={!c.active || expired(c) ? {} : { background: '#D9F2E2', color: '#1E7A46' }}>
-                    {!c.active ? 'off' : expired(c) ? 'expired' : 'active'}
-                  </span>
-                </td>
-                <td style={{ whiteSpace: 'nowrap' }}>
-                  <button className="btn btn-outline btn-sm" style={{ marginRight: 8 }} onClick={() => setEditing(c)}>Edit</button>
-                  <button className="btn btn-outline btn-sm" style={{ marginRight: 8 }} onClick={() => toggle(c)}>{c.active ? 'Disable' : 'Enable'}</button>
-                  <button className="btn btn-outline btn-sm" onClick={() => remove(c)}>Delete</button>
-                </td>
-              </tr>
+              <TableRow key={c.id} hover>
+                <TableCell><Typography fontWeight={700} sx={{ letterSpacing: '0.06em' }}>{c.code}</Typography></TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>{c.type === 'percent' ? `${c.value}%` : fmtRs(c.value)}</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>{c.min_order ? fmtRs(c.min_order) : '—'}</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>{c.used_count}{c.usage_limit ? ` / ${c.usage_limit}` : ''}</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>{c.expires_at ? fmtDate(c.expires_at) : '—'}</TableCell>
+                <TableCell>
+                  <Chip size="small" label={!c.active ? 'off' : expired(c) ? 'expired' : 'active'} color={c.active && !expired(c) ? 'success' : 'default'} sx={{ textTransform: 'capitalize' }} />
+                </TableCell>
+                <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                  <Button size="small" variant="outlined" onClick={() => setEditing(c)} sx={{ mr: 1 }}>Edit</Button>
+                  <Button size="small" variant="outlined" onClick={() => toggle(c)} sx={{ mr: 1 }}>{c.active ? 'Disable' : 'Enable'}</Button>
+                  <Button size="small" variant="outlined" color="error" onClick={() => remove(c)}>Delete</Button>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-        {list.length === 0 && <div className="empty"><div className="display">No coupons yet</div><p>Create one for your next campaign.</p></div>}
-      </div>
+            {list.length === 0 && (
+              <TableRow><TableCell colSpan={7} align="center" sx={{ py: 5 }}><Typography color="text.secondary">No coupons yet — create one for your next campaign.</Typography></TableCell></TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
       {editing && (
         <CouponEditor
           coupon={editing === 'new' ? null : editing}
@@ -800,10 +858,9 @@ function Coupons() {
           onSaved={() => { setEditing(null); load(); }}
         />
       )}
-    </>
+    </Box>
   );
 }
-
 
 function CouponEditor({ coupon, onClose, onSaved }) {
   const toDateInput = (iso) => (iso ? new Date(iso).toISOString().slice(0, 10) : '');
@@ -850,46 +907,43 @@ function CouponEditor({ coupon, onClose, onSaved }) {
   };
 
   return (
-    <div className="cart-overlay open" onClick={onClose}>
-      <div className="admin-card" style={{ maxWidth: 520, margin: '40px auto', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-        <h2 className="display" style={{ fontSize: 26, marginBottom: 20 }}>{coupon ? 'Edit Coupon' : 'New Coupon'}</h2>
-        <form onSubmit={save}>
-          {!coupon && <div className="f-group"><label>Code *</label><input required value={f.code} onChange={set('code')} placeholder="EID20" style={{ textTransform: 'uppercase', letterSpacing: '.06em' }} /></div>}
-          <div className="f-row">
-            <div className="f-group">
-              <label>Type</label>
-              <select value={f.type} onChange={set('type')}>
-                <option value="percent">Percent %</option>
-                <option value="flat">Flat Rs</option>
-              </select>
-            </div>
-            <div className="f-group"><label>Value * {f.type === 'percent' ? '(%)' : '(Rs)'}</label><input required type="number" min="1" max={f.type === 'percent' ? 100 : undefined} value={f.value} onChange={set('value')} /></div>
-          </div>
-          <div className="f-row">
-            <div className="f-group"><label>Min order (Rs)</label><input type="number" min="0" value={f.min_order} onChange={set('min_order')} placeholder="0" /></div>
-            <div className="f-group"><label>Usage limit</label><input type="number" min="1" value={f.usage_limit} onChange={set('usage_limit')} placeholder="Unlimited" /></div>
-          </div>
-          <div className="f-group"><label>Expiry date</label><input type="date" value={f.expires_at} onChange={set('expires_at')} /></div>
-          <div className="f-group">
-            <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <input type="checkbox" checked={f.active} onChange={set('active')} style={{ width: 'auto' }} /> Active
-            </label>
-          </div>
-          {error && <p style={{ color: '#B3402E', marginBottom: 12 }}>{error}</p>}
-          <div style={{ display: 'flex', gap: 12 }}>
-            <button className="btn btn-gold" type="submit" disabled={saving} style={{ flex: 1 }}>{saving ? 'Saving...' : 'Save Coupon'}</button>
-            <button className="btn btn-outline" type="button" onClick={onClose}>Cancel</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <Dialog open onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>{coupon ? 'Edit Coupon' : 'New Coupon'}</DialogTitle>
+      <Box component="form" onSubmit={save}>
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            {!coupon && <TextField label="Code *" required value={f.code} onChange={set('code')} placeholder="EID20" inputProps={{ style: { textTransform: 'uppercase', letterSpacing: '0.06em' } }} />}
+            <Row>
+              <FormControl fullWidth size="small">
+                <InputLabel>Type</InputLabel>
+                <Select value={f.type} label="Type" onChange={set('type')}>
+                  <MenuItem value="percent">Percent %</MenuItem>
+                  <MenuItem value="flat">Flat Rs</MenuItem>
+                </Select>
+              </FormControl>
+              <TextField label={`Value * ${f.type === 'percent' ? '(%)' : '(Rs)'}`} required type="number" inputProps={{ min: 1, max: f.type === 'percent' ? 100 : undefined }} value={f.value} onChange={set('value')} />
+            </Row>
+            <Row>
+              <TextField label="Min order (Rs)" type="number" inputProps={{ min: 0 }} value={f.min_order} onChange={set('min_order')} placeholder="0" />
+              <TextField label="Usage limit" type="number" inputProps={{ min: 1 }} value={f.usage_limit} onChange={set('usage_limit')} placeholder="Unlimited" />
+            </Row>
+            <TextField label="Expiry date" type="date" InputLabelProps={{ shrink: true }} value={f.expires_at} onChange={set('expires_at')} />
+            <FormControlLabel control={<Switch checked={!!f.active} onChange={set('active')} />} label="Active" />
+            {error && <Alert severity="error">{error}</Alert>}
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button variant="contained" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save Coupon'}</Button>
+        </DialogActions>
+      </Box>
+    </Dialog>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/* Products (kept, + CSV export)                                         */
+/* Newsletter                                                           */
 /* ------------------------------------------------------------------ */
-
 
 function Newsletter() {
   const [list, setList] = useState([]);
@@ -920,45 +974,51 @@ function Newsletter() {
     load();
   };
 
+  const pages = Math.max(1, Math.ceil(total / 50));
+
   return (
-    <div className="admin-card" style={{ overflowX: 'auto', padding: 12 }}>
-      <div className="toolbar" style={{ marginTop: 0 }}>
-        <div className="search" style={{ minWidth: 220 }}>
-          <input placeholder="Search email..." value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} aria-label="Search subscribers" />
-        </div>
-        <span style={{ color: 'var(--muted)', fontSize: 14 }}>{total} subscriber{total === 1 ? '' : 's'}</span>
-        <a className="btn btn-outline btn-sm" href="/api/admin/export?type=newsletter">↓ Export CSV</a>
-      </div>
-      <table className="tbl">
-        <thead><tr><th>Email</th><th>Subscribed</th><th></th></tr></thead>
-        <tbody>
-          {list.map((s) => (
-            <tr key={s.id}>
-              <td>{s.email}</td>
-              <td style={{ whiteSpace: 'nowrap' }}>{fmtDate(s.created_at)}</td>
-              <td><button className="btn btn-outline btn-sm" onClick={() => remove(s.id, s.email)}>Remove</button></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {list.length === 0 && <div className="empty"><div className="display">No subscribers yet</div></div>}
+    <Box>
+      <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+        <TextField
+          placeholder="Search email…"
+          value={q}
+          onChange={(e) => { setQ(e.target.value); setPage(1); }}
+          sx={{ width: { xs: '100%', sm: 280 } }}
+          InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>) }}
+        />
+        <Typography variant="body2" color="text.secondary">{total} subscriber{total === 1 ? '' : 's'}</Typography>
+        <Box sx={{ flex: 1 }} />
+        <Button variant="outlined" startIcon={<DownloadIcon />} href="/api/admin/export?type=newsletter">Export CSV</Button>
+      </Stack>
+      <TableContainer component={Paper} sx={{ border: '1px solid #E8E2D6' }}>
+        <Table>
+          <TableHead><TableRow><TableCell>Email</TableCell><TableCell>Subscribed</TableCell><TableCell align="right"></TableCell></TableRow></TableHead>
+          <TableBody>
+            {list.map((s) => (
+              <TableRow key={s.id} hover>
+                <TableCell>{s.email}</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>{fmtDate(s.created_at)}</TableCell>
+                <TableCell align="right"><Button size="small" variant="outlined" color="error" onClick={() => remove(s.id, s.email)}>Remove</Button></TableCell>
+              </TableRow>
+            ))}
+            {list.length === 0 && (
+              <TableRow><TableCell colSpan={3} align="center" sx={{ py: 5 }}><Typography color="text.secondary">No subscribers yet</Typography></TableCell></TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
       {total > 50 && (
-        <div className="toolbar" style={{ justifyContent: 'center' }}>
-          <button className="btn btn-outline btn-sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>← Prev</button>
-          <span style={{ fontSize: 14 }}>Page {page}</span>
-          <button className="btn btn-outline btn-sm" disabled={page * 50 >= total} onClick={() => setPage((p) => p + 1)}>Next →</button>
-        </div>
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2.5 }}>
+          <Pagination count={pages} page={page} onChange={(_, v) => setPage(v)} color="primary" shape="rounded" />
+        </Box>
       )}
-    </div>
+    </Box>
   );
 }
 
-
 /* ------------------------------------------------------------------ */
-/* Phase 1+: shared content helpers                                    */
+/* Settings                                                             */
 /* ------------------------------------------------------------------ */
-
-/** PKT (UTC+5, no DST) <-> UTC helpers for datetime-local inputs. */
 
 function Settings() {
   const [f, setF] = useState({
@@ -1034,63 +1094,55 @@ function Settings() {
   };
 
   const set = (k) => (e) => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
+  const S = ({ children, mt = 0 }) => <Typography variant="h6" sx={{ mt, mb: 2 }}>{children}</Typography>;
 
   return (
-    <div className="admin-card" style={{ maxWidth: 640 }}>
-      <form onSubmit={save}>
-        <h3 className="display" style={{ fontSize: 22, marginBottom: 16 }}>Store</h3>
-        <div className="f-group"><label>Brand Name</label><input value={f.brand} onChange={set('brand')} /></div>
-        <div className="f-group"><label>Tagline</label><input value={f.tagline} onChange={set('tagline')} /></div>
-        <div className="f-group"><label>Announcement Bar</label><input value={f.announcement} onChange={set('announcement')} /></div>
-        <div className="f-group"><label>WhatsApp Number (with country code)</label><input value={f.whatsapp} onChange={set('whatsapp')} placeholder="923001234567" /></div>
-        
-        <h3 className="display" style={{ fontSize: 22, marginBottom: 16, marginTop: 28 }}>Storefront Display</h3>
-        <div className="f-group" style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <input type="checkbox" checked={f.marquee_enabled} onChange={set('marquee_enabled')} style={{ width: 20, height: 20 }} />
-          <label style={{ margin: 0 }}>Show scrolling marquee strip</label>
-        </div>
-        <div className="f-group"><label>Marquee items (separate with | )</label><input value={f.marquee_items} onChange={set('marquee_items')} placeholder="Free delivery|Cash on Delivery|7-day exchange" /></div>
-        <div className="f-group" style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <input type="checkbox" checked={f.popup_enabled} onChange={set('popup_enabled')} style={{ width: 20, height: 20 }} />
-          <label style={{ margin: 0 }}>Show offer popup (once per visit)</label>
-        </div>
-        <div className="f-group"><label>Popup Title</label><input value={f.popup_title} onChange={set('popup_title')} placeholder="Welcome to AMMIGE" /></div>
-        <div className="f-group"><label>Popup Text</label><input value={f.popup_text} onChange={set('popup_text')} placeholder="Get 10% off your first order…" /></div>
-        <div className="f-group"><label>Popup Button Text</label><input value={f.popup_cta} onChange={set('popup_cta')} placeholder="Shop Now" /></div>
-        <div className="f-group"><label>Popup Delay (seconds)</label><input type="number" min="2" max="60" value={f.popup_delay} onChange={set('popup_delay')} /></div>
+    <Card sx={{ maxWidth: 680 }}>
+      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+        <Box component="form" onSubmit={save}>
+          <S>Store</S>
+          <Stack spacing={2}>
+            <TextField label="Brand Name" value={f.brand} onChange={set('brand')} />
+            <TextField label="Tagline" value={f.tagline} onChange={set('tagline')} />
+            <TextField label="Announcement Bar" value={f.announcement} onChange={set('announcement')} />
+            <TextField label="WhatsApp Number (with country code)" value={f.whatsapp} onChange={set('whatsapp')} placeholder="923001234567" />
+          </Stack>
 
-        <div className="f-group"><label>Homepage Video URL</label><input value={f.video_url} onChange={set('video_url')} placeholder="YouTube link or .mp4 URL (empty = no video section)" /><div style={{ fontSize: 12, color: '#777', marginTop: 4 }}>YouTube watch/shorts link or a direct .mp4/.webm URL. Leave empty to hide the video section.</div></div>
+          <S mt={3.5}>Storefront Display</S>
+          <Stack spacing={2}>
+            <FormControlLabel control={<Switch checked={f.marquee_enabled} onChange={set('marquee_enabled')} />} label="Show scrolling marquee strip" />
+            <TextField label="Marquee items (separate with | )" value={f.marquee_items} onChange={set('marquee_items')} placeholder="Free delivery|Cash on Delivery|7-day exchange" />
+            <FormControlLabel control={<Switch checked={f.popup_enabled} onChange={set('popup_enabled')} />} label="Show offer popup (once per visit)" />
+            <TextField label="Popup Title" value={f.popup_title} onChange={set('popup_title')} placeholder="Welcome to AMMIGE" />
+            <TextField label="Popup Text" value={f.popup_text} onChange={set('popup_text')} placeholder="Get 10% off your first order…" />
+            <TextField label="Popup Button Text" value={f.popup_cta} onChange={set('popup_cta')} placeholder="Shop Now" />
+            <TextField label="Popup Delay (seconds)" type="number" inputProps={{ min: 2, max: 60 }} value={f.popup_delay} onChange={set('popup_delay')} />
+            <TextField label="Homepage Video URL" value={f.video_url} onChange={set('video_url')} placeholder="YouTube link or .mp4 URL (empty = no video section)"
+              helperText="YouTube watch/shorts link or a direct .mp4/.webm URL. Leave empty to hide the video section." />
+          </Stack>
 
-        <h3 className="display" style={{ fontSize: 22, margin: '24px 0 16px' }}>Shipping</h3>
-        <div className="f-row">
-          <div className="f-group"><label>Flat Rate (PKR)</label><input type="number" min="0" value={f.shipping_flat} onChange={set('shipping_flat')} /></div>
-          <div className="f-group"><label>Free Shipping Over (PKR)</label><input type="number" min="0" value={f.free_shipping_threshold} onChange={set('free_shipping_threshold')} /></div>
-        </div>
+          <S mt={3.5}>Shipping</S>
+          <Row>
+            <TextField label="Flat Rate (PKR)" type="number" inputProps={{ min: 0 }} value={f.shipping_flat} onChange={set('shipping_flat')} />
+            <TextField label="Free Shipping Over (PKR)" type="number" inputProps={{ min: 0 }} value={f.free_shipping_threshold} onChange={set('free_shipping_threshold')} />
+          </Row>
 
-        <h3 className="display" style={{ fontSize: 22, margin: '24px 0 16px' }}>Payments</h3>
-        <div className="f-group">
-          <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <input type="checkbox" checked={f.payment_cod} onChange={set('payment_cod')} style={{ width: 'auto' }} /> Cash on Delivery
-          </label>
-        </div>
-        <div className="f-group">
-          <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <input type="checkbox" checked={f.payment_bank} onChange={set('payment_bank')} style={{ width: 'auto' }} /> Bank Transfer
-          </label>
-        </div>
+          <S mt={1.5}>Payments</S>
+          <Stack spacing={0.5}>
+            <FormControlLabel control={<Switch checked={f.payment_cod} onChange={set('payment_cod')} />} label="Cash on Delivery" />
+            <FormControlLabel control={<Switch checked={f.payment_bank} onChange={set('payment_bank')} />} label="Bank Transfer" />
+          </Stack>
 
-        <h3 className="display" style={{ fontSize: 22, margin: '24px 0 16px' }}>Security</h3>
-        <div className="f-group">
-          <label>New Admin Password (leave empty to keep current)</label>
-          <input type="password" value={f.admin_password} onChange={set('admin_password')} placeholder="Min 6 characters" />
-        </div>
-        {msg && <p style={{ color: '#1E7A46', marginBottom: 12 }}>{msg}</p>}
-        {error && <p style={{ color: '#B3402E', marginBottom: 12 }}>{error}</p>}
-        <button className="btn btn-gold" type="submit">Save Settings</button>
-      </form>
-    </div>
+          <S mt={3.5}>Security</S>
+          <TextField label="New Admin Password (leave empty to keep current)" type="password" value={f.admin_password} onChange={set('admin_password')} placeholder="Min 6 characters" />
+
+          {msg && <Alert severity="success" sx={{ mt: 2 }}>{msg}</Alert>}
+          {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+          <Button variant="contained" size="large" type="submit" sx={{ mt: 2.5 }}>Save Settings</Button>
+        </Box>
+      </CardContent>
+    </Card>
   );
 }
-
 
 export { Dashboard, Orders, OrderDetail, InvoicePrint, ManualOrder, Customers, Coupons, Newsletter, Settings };
