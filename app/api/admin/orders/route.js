@@ -40,7 +40,7 @@ export async function GET(req) {
       args.push(Number(q));
     } else {
       // customer is a JSON blob: name/phone/city live inside the text.
-      where.push('customer LIKE ?');
+      where.push('customer ILIKE ?');
       args.push(`%${q}%`);
     }
   }

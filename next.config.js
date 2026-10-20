@@ -1,8 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    // Local images only; remote patterns can be added in admin later.
-    remotePatterns: [],
+    // Product photos may be hosted externally (admin allows image URLs);
+    // without this the optimizer blocks them and cards render broken.
+    remotePatterns: [{ protocol: 'https', hostname: '**' }],
   },
   async headers() {
     return [

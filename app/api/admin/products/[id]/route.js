@@ -158,7 +158,7 @@ export async function PATCH(req, { params }) {
       args: [...keys.map((k) => clean(k, updates[k], existing)), id],
     });
   } catch (e) {
-    if (String(e && e.message).includes('UNIQUE')) {
+    if ((e && e.code === '23505') || /unique constraint|duplicate key/i.test(String(e && e.message))) {
       return NextResponse.json({ error: 'SKU already exists.' }, { status: 400 });
     }
     console.error('admin product update failed', e);

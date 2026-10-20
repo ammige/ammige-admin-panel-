@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 const fs = require('fs');
-const { resolveMediaPath, contentTypeFor } = require('@/lib/media');
+const { resolveMediaPath, contentTypeFor, readMediaDb } = require('@/lib/media');
 
 /**
  * GET /media/<dir>/<file> — streams uploaded files from UPLOAD_DIR.
@@ -73,6 +73,19 @@ function serveFile(full, req) {
 }
 
 export async function GET(req, { params }) {
+  // Uploaded images live in the shared DB (Vercel disk is ephemeral and not
+  // shared between deployments) — check there first, then fall back to disk.
+  const dbHit = await readMediaDb(params.path);
+  if (dbHit) {
+    return new NextResponse(dbHit.buf, {
+      status: 200,
+      headers: {
+        'Content-Type': dbHit.mime,
+        'Content-Length': String(dbHit.buf.length),
+        'Cache-Control': 'public, max-age=31536000, immutable',
+      },
+    });
+  }
   const full = resolveMediaPath(params.path);
   if (!full) {
     return new NextResponse('Not found', { status: 404 });

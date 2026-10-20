@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { client, ready } from '@/lib/db';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin } from '@/lib/admin-guard';
 import { checkOrigin } from '@/lib/csrf';
 
 /** Admin: popup stats totals. */

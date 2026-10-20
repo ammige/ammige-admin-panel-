@@ -109,7 +109,7 @@ export async function POST(req) {
     });
     return NextResponse.json(parseCoupon(row.rows[0]), { status: 201 });
   } catch (e) {
-    if (/UNIQUE constraint failed/i.test(String(e && e.message))) {
+    if ((e && e.code === '23505') || /unique constraint|duplicate key/i.test(String(e && e.message))) {
       return NextResponse.json({ error: 'That coupon code already exists.' }, { status: 409 });
     }
     console.error('coupon create failed', e);

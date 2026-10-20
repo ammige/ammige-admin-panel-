@@ -18,17 +18,22 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
   }
   const { password } = body || {};
-  // Password source: env var first (operator-controlled), then DB setting.
-  // NEVER a hardcoded default in production (fail closed if nothing configured).
-  let expected = process.env.AMMIGE_ADMIN_PASSWORD || '';
-  if (!expected) expected = await getSetting('admin_password');
-  if (!expected) {
+  // Password sources: the env var (operator master) OR the DB setting that the
+  // admin Settings page changes. Either one logs in, so a Settings password
+  // change always takes effect. Fail closed in production if neither is set.
+  const candidates = [];
+  if (process.env.AMMIGE_ADMIN_PASSWORD) candidates.push(process.env.AMMIGE_ADMIN_PASSWORD);
+  try {
+    const dbPw = await getSetting('admin_password');
+    if (dbPw) candidates.push(dbPw);
+  } catch { /* DB unavailable — env password still works */ }
+  if (!candidates.length) {
     if (process.env.NODE_ENV === 'production') {
       return NextResponse.json({ error: 'Server misconfigured: admin password not set.' }, { status: 503 });
     }
-    expected = 'ammige123'; // local dev only
+    candidates.push('ammige123'); // local dev only
   }
-  if (typeof password === 'string' && password === expected && password.length > 0) {
+  if (typeof password === 'string' && password.length > 0 && candidates.includes(password)) {
     const res = NextResponse.json({ ok: true });
     res.headers.set('Set-Cookie', issueSessionCookie());
     return res;

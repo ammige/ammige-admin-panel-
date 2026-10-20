@@ -54,7 +54,7 @@ export async function GET(req) {
     args.push(slug);
   }
   if (q && isNonEmptyString(q)) {
-    where.push('(name LIKE ? OR sku LIKE ?)');
+    where.push('(name ILIKE ? OR sku ILIKE ?)');
     args.push(`%${q.trim()}%`, `%${q.trim()}%`);
   }
   const whereSQL = where.length ? `WHERE ${where.join(' AND ')}` : '';
@@ -164,7 +164,7 @@ export async function POST(req) {
     await logActivity('create', 'product', Number(ins.lastInsertRowid), name);
     return NextResponse.json(parseProduct(r.rows[0]), { status: 201 });
   } catch (e) {
-    if (String(e && e.message).includes('UNIQUE')) {
+    if ((e && e.code === '23505') || /unique constraint|duplicate key/i.test(String(e && e.message))) {
       return NextResponse.json({ error: 'SKU already exists.' }, { status: 400 });
     }
     console.error('admin product create failed', e);

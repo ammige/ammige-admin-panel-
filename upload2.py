@@ -5,7 +5,7 @@ Manifest entries: {file, sha, size} for create_deployment.
 """
 import base64, hashlib, json, os, subprocess, sys
 
-ROOT = os.path.expanduser('~/workspace/ammige')
+ROOT = os.path.dirname(os.path.abspath(__file__))
 MANIFEST = '/tmp/ammige-manifest.json'
 EXCLUDE_DIRS = {'node_modules', '.next', '.git'}
 EXCLUDE_FILES = {'ammige.db', '.env', '.env.local'}

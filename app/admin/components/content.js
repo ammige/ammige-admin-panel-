@@ -106,9 +106,9 @@ function SiteSettings() {
       const r = await fetch('/api/admin/settings');
       const d = await r.json();
       setS(d.settings || {});
-      const blocks = await apiContent('GET', '/api/admin/content?type=page_seo');
+      const blocksRes = await apiContent('GET', '/api/admin/content?type=page_seo');
       const m = {};
-      for (const b of blocks) m[b.name] = b;
+      for (const b of (blocksRes.items || [])) m[b.name] = b;
       setSeo(m);
     } catch (e) { setError(e.message); }
   }
@@ -278,8 +278,8 @@ function Menus() {
         apiContent('GET', '/api/admin/content?type=nav_menu'),
         apiContent('GET', '/api/admin/content?type=footer'),
       ]);
-      setNav(n[0] || null);
-      setFooter(f[0] || null);
+      setNav((n.items || [])[0] || null);
+      setFooter((f.items || [])[0] || null);
     } catch (e) { setError(e.message); }
   }
 
@@ -356,8 +356,8 @@ function Bars() {
         apiContent('GET', '/api/admin/content?type=announcement'),
         apiContent('GET', '/api/admin/content?type=marquee'),
       ]);
-      setAnn(a[0] || null);
-      setMarquees(m);
+      setAnn((a.items || [])[0] || null);
+      setMarquees(m.items || []);
     } catch (e) { setError(e.message); }
   }
 
@@ -850,6 +850,9 @@ function Offers() {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>Automatic sale prices on cards + product pages. Expired offers revert prices automatically.</Typography>
       <Messages msg={msg} error={error} />
 
+      {list.length === 0 && (
+        <Typography color="text.secondary" sx={{ py: 3 }}>No offers yet. Create one below — sale prices apply across the store automatically while it is live.</Typography>
+      )}
       {list.map((o) => (
         <Card key={o.id} sx={{ mb: 1.5 }}>
           <CardContent>

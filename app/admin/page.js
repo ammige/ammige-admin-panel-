@@ -140,6 +140,18 @@ export default function AdminPage() {
       .finally(() => setChecking(false));
   }, []);
 
+  // Keep the open section in the URL hash so refresh / back keeps your place
+  // and a section can be bookmarked or shared.
+  const TAB_KEYS = ['dashboard', 'orders', 'products', 'customers', 'coupons', 'newsletter', 'site', 'menus', 'bars', 'popups', 'offers', 'homepage', 'collections', 'activity', 'settings'];
+  useEffect(() => {
+    const h = window.location.hash.replace('#', '');
+    if (TAB_KEYS.includes(h)) setTab(h);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (authed) { try { history.replaceState(null, '', '#' + tab); } catch { /* ignore */ } }
+  }, [tab, authed]);
+
   const logout = async () => {
     await fetch('/api/admin/logout', { method: 'POST' });
     setAuthed(false);

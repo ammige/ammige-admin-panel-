@@ -38,6 +38,7 @@ export function middleware(req) {
       pathname === '/admin' ||
       pathname.startsWith('/admin/') ||
       pathname.startsWith('/api/admin/') ||
+      pathname.startsWith('/media/') ||
       pathname.startsWith('/images/') ||
       pathname === '/icon.svg';
     if (!ok) return new NextResponse('Not found', { status: 404 });

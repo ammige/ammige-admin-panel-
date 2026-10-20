@@ -202,6 +202,9 @@ function Dashboard() {
               </TableBody>
             </Table>
           </TableContainer>
+          {!(d.recentOrders || []).length && (
+            <Typography color="text.secondary" sx={{ px: 2, py: 2.5 }}>No orders yet — new orders will appear here.</Typography>
+          )}
         </CardContent>
       </Card>
     </Box>

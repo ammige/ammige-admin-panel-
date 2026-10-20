@@ -7,7 +7,7 @@ import { checkRate } from '@/lib/rate-limit';
 export async function GET(req) {
   const denied = requireAdmin(req);
   if (denied) return denied;
-  if (checkRate(req, { windowMs: 60_000, max: 120, scope: 'admin-read' })) {
+  if (!checkRate(req, { windowMs: 60_000, max: 120, scope: 'admin-read' })) {
     return NextResponse.json({ error: 'Too many requests. Slow down.' }, { status: 429 });
   }
   await ready();
@@ -16,7 +16,7 @@ export async function GET(req) {
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '50', 10)));
   const q = (searchParams.get('q') || '').trim();
   const c = client();
-  const where = q ? 'WHERE email LIKE ?' : '';
+  const where = q ? 'WHERE email ILIKE ?' : '';
   const args = q ? [`%${q}%`] : [];
   const total = (await c.execute({
     sql: `SELECT COUNT(*) AS n FROM newsletter ${where}`, args,
@@ -33,7 +33,7 @@ export async function DELETE(req) {
   if (denied) return denied;
   const originErr = checkOrigin(req);
   if (originErr) return originErr;
-  if (checkRate(req, { windowMs: 60_000, max: 60, scope: 'admin-write' })) {
+  if (!checkRate(req, { windowMs: 60_000, max: 60, scope: 'admin-write' })) {
     return NextResponse.json({ error: 'Too many requests. Slow down.' }, { status: 429 });
   }
   const { id } = await req.json().catch(() => ({}));

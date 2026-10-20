@@ -3,7 +3,7 @@ import { requireAdmin } from '@/lib/admin-guard';
 import { checkRate } from '@/lib/rate-limit';
 import { checkOrigin } from '@/lib/csrf';
 
-const { validateUpload, saveBuffer, saveBufferAs } = require('@/lib/media');
+const { validateUpload, saveMedia } = require('@/lib/media');
 
 let _sharp = null;
 function sharp() {
@@ -65,11 +65,12 @@ export async function POST(req) {
       console.error('sharp convert failed, storing original', e);
       // fall through: store original bytes with a matching extension
       const ext = file.type === 'image/png' ? '.png' : '.jpg';
-      const url = saveBufferAs(buf, 'image', ext);
+      const url = await saveMedia(buf, 'image', { ext, mime: file.type });
       return NextResponse.json({ ok: true, url, size: buf.length, type: file.type });
     }
   }
 
-  const url = saveBuffer(buf, outKind);
+  const isImg = outKind === 'image' || outKind === 'frame';
+  const url = await saveMedia(buf, outKind, { mime: isImg && sharp() ? 'image/webp' : file.type });
   return NextResponse.json({ ok: true, url, size: buf.length, kind: outKind });
 }
