@@ -115,15 +115,15 @@ function Products() {
 
   return (
     <Box>
-      <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap alignItems="center" sx={{ mb: 2 }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center', mb: 2 }}>
         <TextField
           placeholder="Search products…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          sx={{ width: { xs: '100%', sm: 260 }, flex: { xs: '1 1 100%', sm: '0 0 auto' } }}
+          sx={{ flex: '1 1 200px', minWidth: 180 }}
           InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>) }}
         />
-        <FormControl size="small" sx={{ minWidth: 170 }}>
+        <FormControl size="small" sx={{ flex: '0 1 170px', minWidth: 150 }}>
           <InputLabel>Collection</InputLabel>
           <Select value={collection} label="Collection" onChange={(e) => setCollection(e.target.value)}>
             <MenuItem value="">All collections</MenuItem>
@@ -132,11 +132,10 @@ function Products() {
             <MenuItem value="leather">Leather</MenuItem>
           </Select>
         </FormControl>
-        <Box sx={{ flex: 1 }} />
         <Button variant="outlined" startIcon={<DownloadIcon />} href="/api/admin/products/export">Export CSV</Button>
         <Button variant="outlined" startIcon={<UploadIcon />} onClick={csvImport} disabled={bulkBusy}>Import CSV</Button>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => setEditing('new')}>Add Product</Button>
-      </Stack>
+      </Box>
 
       {selected.size > 0 && (
         <Paper sx={{ p: 1.5, mb: 2, bgcolor: '#FFF4E5', border: '1px solid #F0DDBB' }}>
@@ -193,14 +192,14 @@ function Products() {
                 </TableCell>
               </TableRow>
             ))}
-            {!loading && items.length === 0 && (
-              <TableRow><TableCell colSpan={7} align="center" sx={{ py: 5 }}>
-                <Typography color="text.secondary">No products yet. Click “Add Product” to create your first product.</Typography>
-              </TableCell></TableRow>
-            )}
           </TableBody>
         </Table>
         {loading && <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress size={28} /></Box>}
+        {!loading && items.length === 0 && (
+          <Box sx={{ py: 5, px: 2, textAlign: 'center' }}>
+            <Typography color="text.secondary">No products yet. Click “Add Product” to create your first product.</Typography>
+          </Box>
+        )}
       </TableContainer>
 
       {pages > 1 && (

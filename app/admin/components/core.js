@@ -247,15 +247,15 @@ function Orders({ onPrint }) {
 
   return (
     <Box>
-      <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap alignItems="center" sx={{ mb: 2 }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center', mb: 2 }}>
         <TextField
           placeholder="Search id / name / phone…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          sx={{ width: { xs: '100%', sm: 280 } }}
+          sx={{ flex: '1 1 200px', minWidth: 180 }}
           InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>) }}
         />
-        <FormControl size="small" sx={{ minWidth: 150 }}>
+        <FormControl size="small" sx={{ flex: '0 1 150px', minWidth: 140 }}>
           <InputLabel>Payment</InputLabel>
           <Select value={payment} label="Payment" onChange={(e) => setPayment(e.target.value)}>
             <MenuItem value="">All payments</MenuItem>
@@ -263,9 +263,8 @@ function Orders({ onPrint }) {
             <MenuItem value="bank">Bank</MenuItem>
           </Select>
         </FormControl>
-        <Box sx={{ flex: 1 }} />
         <Button variant="outlined" startIcon={<DownloadIcon />} href="/api/admin/export?type=orders">CSV</Button>
-      </Stack>
+      </Box>
 
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
         {[['', 'All'], ...STATUSES.map((s) => [s, s])].map(([v, label]) => (
@@ -978,18 +977,17 @@ function Newsletter() {
 
   return (
     <Box>
-      <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center', mb: 2 }}>
         <TextField
           placeholder="Search email…"
           value={q}
           onChange={(e) => { setQ(e.target.value); setPage(1); }}
-          sx={{ width: { xs: '100%', sm: 280 } }}
+          sx={{ flex: '1 1 200px', minWidth: 180 }}
           InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>) }}
         />
         <Typography variant="body2" color="text.secondary">{total} subscriber{total === 1 ? '' : 's'}</Typography>
-        <Box sx={{ flex: 1 }} />
         <Button variant="outlined" startIcon={<DownloadIcon />} href="/api/admin/export?type=newsletter">Export CSV</Button>
-      </Stack>
+      </Box>
       <TableContainer component={Paper} sx={{ border: '1px solid #E8E2D6' }}>
         <Table>
           <TableHead><TableRow><TableCell>Email</TableCell><TableCell>Subscribed</TableCell><TableCell align="right"></TableCell></TableRow></TableHead>
