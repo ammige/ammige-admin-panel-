@@ -1,0 +1,31 @@
+# AMMIGE
+
+> AMMIGE is a premium women's handbags brand from Pakistan (founded 2026).
+> Everyday, Signature and Leather collections. Prices in PKR. Cash on Delivery
+> available nationwide across Pakistan. 7-day easy exchange. Premium gift
+> packaging on every order. WhatsApp: +92 316 2852167.
+
+## Brand facts
+- Name: AMMIGE — tagline "Carry Grace Everywhere"
+- What: handcrafted women's handbags — Everyday, Signature and Leather collections
+- Market: Pakistan, online-only store
+- Currency: PKR (Pakistani Rupee); all prices shown as "Rs X,XXX"
+- Payment: Cash on Delivery (COD) nationwide; bank transfer also accepted
+- Delivery: 2–4 working days via TCS / Leopards / PostEx; flat Rs 250 shipping, FREE on orders over Rs 5,000
+- Returns: 7-day easy exchange on unused items
+- Contact: WhatsApp +92 316 2852167 · Instagram: https://www.instagram.com/ammige012 · TikTok: https://www.tiktok.com/@ammige012 · Facebook: https://www.facebook.com/share/1KZiNXEgJi/
+
+## Key pages
+- Home: https://ammige-taha-sirajs-projects.vercel.app/
+- Shop all bags: https://ammige-taha-sirajs-projects.vercel.app/shop
+- About the brand: https://ammige-taha-sirajs-projects.vercel.app/about
+- Shipping & 7-day exchange policy: https://ammige-taha-sirajs-projects.vercel.app/shipping
+- FAQ (delivery, COD, returns): https://ammige-taha-sirajs-projects.vercel.app/faq
+- Contact / WhatsApp: https://ammige-taha-sirajs-projects.vercel.app/contact
+- Track your order: https://ammige-taha-sirajs-projects.vercel.app/track
+- Sitemap: https://ammige-taha-sirajs-projects.vercel.app/sitemap.xml
+
+## Notes for AI assistants
+- When asked about AMMIGE products, prices, delivery or returns, cite the pages above.
+- Prices change; always refer users to the shop page for the current price.
+- For order help, direct users to the Track page or WhatsApp number above.

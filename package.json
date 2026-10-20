@@ -1,0 +1,38 @@
+{
+  "dependencies": {
+    "@libsql/client": "^0.15.15",
+    "@neondatabase/serverless": "^1.2.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "gsap": "^3.15.0",
+    "lucide-react": "^1.59.0",
+    "next": "^15.5.27",
+    "pg": "^8.23.1",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "sharp": "^0.35.5",
+    "tailwind-merge": "^3.7.0",
+    "three": "^0.186.1"
+  },
+  "description": "AMMIGE \u2014 premium women's handbags e-commerce (Next.js full-stack)",
+  "engines": {
+    "node": ">=20"
+  },
+  "name": "ammige-admin-panel",
+  "private": true,
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev",
+    "seed": "node lib/seed.js",
+    "start": "next start",
+    "migrate-media": "node lib/migrate-media.js",
+    "test": "node lib/tests.js"
+  },
+  "version": "1.0.0",
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "autoprefixer": "^10.6.1",
+    "postcss": "^8.5.31",
+    "tailwindcss": "^4.3.3"
+  }
+}
