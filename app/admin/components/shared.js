@@ -16,20 +16,38 @@ const fmtDate = (iso) => {
   }
 };
 
+// Vercel rejects request bodies over ~4.5MB before the request even
+// reaches the server, so an image must be shrunk client-side until it
+// is safely below that — a raw phone photo (5-10MB) otherwise fails
+// with an unreadable platform error. Always re-encode as JPEG and keep
+// lowering quality/size until it fits.
+const UPLOAD_SAFE_BYTES = 3.4 * 1024 * 1024;
+
 async function prepImage(file, maxDim = 1600) {
   if (file.type === 'image/gif') return file; // keep animation
-  const bmp = await createImageBitmap(file).catch(() => null);
-  if (!bmp) return file;
-  const scale = Math.min(1, maxDim / Math.max(bmp.width, bmp.height));
-  if (scale >= 1 && file.size < 900 * 1024) { bmp.close(); return file; }
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(bmp.width * scale);
-  canvas.height = Math.round(bmp.height * scale);
-  canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height);
+  let bmp = null;
+  try { bmp = await createImageBitmap(file); } catch { bmp = null; }
+  if (!bmp) {
+    throw new Error('Ye photo parhi nahi ja rahi — is format ki photo support nahi hai. JPG ya PNG photo try karein.');
+  }
+  let scale = Math.min(1, (maxDim || 1600) / Math.max(bmp.width, bmp.height));
+  let quality = 0.85;
+  let out = null;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bmp.width * scale));
+    canvas.height = Math.max(1, Math.round(bmp.height * scale));
+    canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    out = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', quality));
+    if (!out || out.size <= UPLOAD_SAFE_BYTES) break;
+    if (quality > 0.55) quality -= 0.15; else scale *= 0.72;
+  }
   bmp.close();
-  const type = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-  const blob = await new Promise((res) => canvas.toBlob(res, type, 0.85));
-  return blob ? new File([blob], file.name.replace(/\.\w+$/, type === 'image/png' ? '.png' : '.jpg'), { type }) : file;
+  if (!out) throw new Error('Photo tayyar nahi ho saki. Dobara try karein.');
+  if (out.size <= UPLOAD_SAFE_BYTES && file.size <= UPLOAD_SAFE_BYTES && scale >= 1 && file.type !== 'image/png') {
+    return file; // already small enough — keep the original bytes
+  }
+  return new File([out], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' });
 }
 
 async function uploadFile(file, maxDim, kind = 'image') {
@@ -38,12 +56,13 @@ async function uploadFile(file, maxDim, kind = 'image') {
     const ready = await prepImage(file, maxDim);
     fd.append('file', ready);
   } else {
+    if (file.size > 4.2 * 1024 * 1024) throw new Error('File bohat bari hai (max ~4MB). Chhoti file try karein.');
     fd.append('file', file);
   }
   fd.append('kind', kind);
   const r = await fetch('/api/admin/upload', { method: 'POST', body: fd });
-  const d = await r.json();
-  if (!r.ok) throw new Error(d.error || 'Upload failed');
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || (r.status === 413 ? 'File bohat bari hai — chhoti file try karein.' : 'Upload failed'));
   return d.url;
 }
 
