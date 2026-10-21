@@ -562,6 +562,19 @@ function Collections() {
 
   const save = async (c) => {
     setMsg(''); setError('');
+    if (!c.id) {
+      const slug = String(c.data.id || '').trim().toLowerCase();
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+        setError('Give the collection an ID (lowercase letters, numbers, dashes — e.g. "bridal").');
+        return;
+      }
+      if (list.some((x) => x.data && x.data.id === slug)) {
+        setError(`A collection with ID "${slug}" already exists.`);
+        return;
+      }
+      c = { ...c, name: slug, data: { ...c.data, id: slug } };
+    }
+    if (!String(c.data.name || '').trim()) { setError('Display name is required.'); return; }
     try {
       if (c.id) {
         await apiContent('PATCH', `/api/admin/content/${c.id}`, {
@@ -576,13 +589,40 @@ function Collections() {
     } catch (err) { setError(err.message); }
   };
 
+  const toggleActive = async (c) => {
+    setMsg(''); setError('');
+    try {
+      await apiContent('PATCH', `/api/admin/content/${c.id}`, { active: c.active ? 0 : 1 });
+      await load();
+      setMsg(c.active ? 'Collection hidden from the website.' : 'Collection is live on the website.');
+    } catch (err) { setError(err.message); }
+  };
+
+  const remove = async (c) => {
+    if (!confirm(`Delete collection "${c.data.name}" permanently? Products already in it keep the label but the collection page/filter disappears.`)) return;
+    setMsg(''); setError('');
+    try {
+      await apiContent('DELETE', `/api/admin/content/${c.id}`);
+      await load();
+      setMsg('Collection deleted.');
+    } catch (err) { setError(err.message); }
+  };
+
   const ce = editing;
   const sd = (k, v) => setEditing({ ...ce, data: { ...ce.data, [k]: v } });
 
   return (
     <Box sx={{ maxWidth: 900 }}>
-      <Typography variant="h5" sx={{ mb: 0.5 }}>Collections</Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>Rename, describe and re-image collections. IDs cannot be changed after creation.</Typography>
+      <Stack direction="row" alignItems="flex-start" spacing={2} sx={{ mb: 2.5 }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography variant="h5" sx={{ mb: 0.5 }}>Collections</Typography>
+          <Typography variant="body2" color="text.secondary">Add new collections, rename, describe and re-image them. New collections appear on the website (homepage, shop filter and product form) immediately. IDs cannot be changed after creation.</Typography>
+        </Box>
+        <Button variant="contained" startIcon={<AddIcon />} sx={{ flexShrink: 0 }}
+          onClick={() => setEditing({ id: null, name: '', status: 'published', active: 1, data: { id: '', name: '', tagline: '', description: '', image: '' } })}>
+          Add Collection
+        </Button>
+      </Stack>
       <Messages msg={msg} error={error} />
 
       {list.map((c) => (
@@ -596,14 +636,28 @@ function Collections() {
               <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1, fontFamily: 'monospace' }}>{c.data.id}</Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>{c.data.tagline}</Typography>
             </Box>
-            <Button size="small" variant="outlined" onClick={() => setEditing(JSON.parse(JSON.stringify(c)))}>Edit</Button>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
+              <Button size="small" variant="outlined" onClick={() => setEditing(JSON.parse(JSON.stringify(c)))}>Edit</Button>
+              {!['everyday', 'signature', 'leather'].includes(c.data.id) && (
+                <>
+                  <FormControlLabel control={<Switch size="small" checked={!!c.active} onChange={() => toggleActive(c)} />} label={c.active ? 'Live' : 'Off'} sx={{ mr: 0 }} />
+                  <Button size="small" variant="outlined" color="error" onClick={() => remove(c)}>Delete</Button>
+                </>
+              )}
+            </Stack>
           </CardContent>
         </Card>
       ))}
 
       {ce && (
-        <EditorDialog open onClose={() => setEditing(null)} title="Edit collection" maxWidth="sm" onSave={() => save(editing)}>
+        <EditorDialog open onClose={() => setEditing(null)} title={ce.id ? 'Edit collection' : 'New collection'} maxWidth="sm" onSave={() => save(editing)}>
           <Stack spacing={2} sx={{ mb: 2 }}>
+            {!ce.id && (
+              <TextField label="Collection ID (slug) *" value={ce.data.id}
+                onChange={(e) => sd('id', e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, '-'))}
+                placeholder="e.g. bridal"
+                helperText="Used in the shop URL/filter (e.g. /shop?collection=bridal). Cannot be changed later." />
+            )}
             <TextField label="Display name" value={ce.data.name} onChange={(e) => sd('name', e.target.value)} />
             <TextField label="Tagline" value={ce.data.tagline} onChange={(e) => sd('tagline', e.target.value)} />
             <TextField label="Description" value={ce.data.description || ''} onChange={(e) => sd('description', e.target.value)} multiline rows={3} />

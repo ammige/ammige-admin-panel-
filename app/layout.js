@@ -1,10 +1,10 @@
 import './globals.css';
-import { Inter } from 'next/font/google';
+import { Poppins } from 'next/font/google';
 
 // AMMIGE Admin Panel — standalone app (its own repo/deployment).
 // Shares the same backend data layer (lib/) and the same Neon database
 // as the storefront; only /admin and /api/admin/* are served here.
-const inter = Inter({ weight: ['400', '500', '600', '700'], subsets: ['latin'], display: 'swap', variable: '--font-b' });
+const poppins = Poppins({ weight: ['400', '500', '600', '700', '800'], subsets: ['latin'], display: 'swap', variable: '--font-poppins' });
 
 export const metadata = {
   title: 'AMMIGE Admin',
@@ -14,7 +14,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={inter.variable} style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <body className={poppins.variable} style={{ fontFamily: "var(--font-poppins), 'Poppins', system-ui, sans-serif" }}>
         {children}
       </body>
     </html>

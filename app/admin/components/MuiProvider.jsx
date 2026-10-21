@@ -1,6 +1,6 @@
 'use client';
 
-import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+import { ThemeProvider, createTheme, CssBaseline, GlobalStyles } from '@mui/material';
 
 const theme = createTheme({
   palette: {
@@ -15,7 +15,7 @@ const theme = createTheme({
     divider: '#E8E2D6',
   },
   typography: {
-    fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+    fontFamily: "var(--font-poppins), 'Poppins', system-ui, -apple-system, sans-serif",
     h5: { fontWeight: 700, letterSpacing: '-0.01em' },
     h6: { fontWeight: 600 },
     subtitle2: { fontWeight: 600 },
@@ -28,15 +28,41 @@ const theme = createTheme({
     MuiButton: { defaultProps: { disableElevation: true }, styleOverrides: { root: { borderRadius: 10 } } },
     MuiCard: { styleOverrides: { root: { border: '1px solid #E8E2D6', boxShadow: '0 1px 2px rgba(28,26,22,0.04)' } } },
     MuiPaper: { styleOverrides: { root: { backgroundImage: 'none' } } },
-    MuiChip: { styleOverrides: { root: { fontWeight: 600 } } },
-    MuiTableCell: { styleOverrides: { head: { fontWeight: 600, color: '#8A7E6B', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em' } } },
+    MuiTableCell: { styleOverrides: {
+      head: { fontWeight: 600, color: '#8A7E6B', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em' },
+      root: { overflowWrap: 'break-word' },
+    } },
+    MuiChip: { styleOverrides: { root: { fontWeight: 600, maxWidth: '100%' }, label: { overflow: 'hidden', textOverflow: 'ellipsis' } } },
+    MuiDialog: { styleOverrides: { paper: {
+      '@media (max-width: 600px)': { margin: 10, width: 'calc(100% - 20px)', maxHeight: 'calc(100% - 20px)' },
+    } } },
+    MuiDialogTitle: { styleOverrides: { root: { overflowWrap: 'break-word', paddingRight: 56 } } },
+    MuiDialogContent: { styleOverrides: { root: { overflowWrap: 'break-word' } } },
+    MuiAlert: { styleOverrides: { message: { overflowWrap: 'break-word', minWidth: 0 } } },
+    MuiCardContent: { styleOverrides: { root: { minWidth: 0 } } },
+    MuiTypography: { styleOverrides: { root: { overflowWrap: 'break-word' } } },
   },
 });
+
+// Admin-wide guards against horizontal scroll / runaway content on small
+// screens. MuiProvider only wraps the admin app, so these never touch
+// the storefront.
+const adminGlobalStyles = (
+  <GlobalStyles
+    styles={{
+      'html, body': { maxWidth: '100%', overflowX: 'hidden' },
+      'img, video, svg': { maxWidth: '100%' },
+      '.MuiTableContainer-root': { maxWidth: '100%' },
+      'input, select, textarea': { maxWidth: '100%' },
+    }}
+  />
+);
 
 export default function MuiProvider({ children }) {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
+      {adminGlobalStyles}
       {children}
     </ThemeProvider>
   );

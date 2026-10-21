@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import {
-  client, ready, parseProduct, normalizeCollection,
+  client, ready, parseProduct, normalizeCollection, resolveCollection,
   isNonEmptyString, isPositiveInt,
   sanitizeText, sanitizeStringArray, isSafeImageUrl,
 } from '@/lib/db';
@@ -48,7 +48,7 @@ export async function GET(req) {
   const where = [];
   const args = [];
   if (collection) {
-    const slug = normalizeCollection(collection);
+    const slug = await resolveCollection(collection);
     if (!slug) return NextResponse.json({ error: 'Invalid collection.' }, { status: 400 });
     where.push('collection = ?');
     args.push(slug);
@@ -88,9 +88,9 @@ export async function POST(req) {
 
   const name = sanitizeText(b.name, 200);
   if (!name) return NextResponse.json({ error: 'name is required.' }, { status: 400 });
-  const collectionSlug = normalizeCollection(b.collection);
+  const collectionSlug = await resolveCollection(b.collection);
   if (!collectionSlug) {
-    return NextResponse.json({ error: 'collection must be everyday|signature|leather.' }, { status: 400 });
+    return NextResponse.json({ error: 'Unknown collection. Create it first in the Collections tab.' }, { status: 400 });
   }
   if (!isPositiveInt(b.price)) {
     return NextResponse.json({ error: 'price must be a positive integer (PKR).' }, { status: 400 });
@@ -121,7 +121,10 @@ export async function POST(req) {
   if (!sku) {
     const m = await c.execute('SELECT COALESCE(MAX(id),0) AS v FROM products');
     const nextId = Number(m.rows[0].v) + 1;
-    sku = `AM-${SKU_PREFIX[collectionSlug]}-${String(nextId).padStart(4, '0')}`;
+    const prefix = SKU_PREFIX[collectionSlug]
+      || collectionSlug.split('-').filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase()
+      || 'GN';
+    sku = `AM-${prefix}-${String(nextId).padStart(4, '0')}`;
   }
 
   try {

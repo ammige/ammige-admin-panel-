@@ -15,7 +15,36 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import CloseIcon from '@mui/icons-material/Close';
 import { uploadFile, toPKTInput, fromPKTInput, AdminImageField } from './shared';
 
+const DEFAULT_COLLS = [
+  { id: 'everyday', name: 'Everyday' },
+  { id: 'signature', name: 'Signature' },
+  { id: 'leather', name: 'Leather' },
+];
+
+// Collections come from the Collections tab (content blocks) so a newly
+// added collection can immediately hold products. Defaults are the base.
+function useCollections() {
+  const [colls, setColls] = useState(DEFAULT_COLLS);
+  useEffect(() => {
+    fetch('/api/admin/content?type=collection')
+      .then((r) => r.json())
+      .then((d) => {
+        const fromDb = (d.items || [])
+          .filter((c) => c.active && c.data && c.data.id)
+          .map((c) => ({ id: c.data.id, name: c.data.name || c.data.id }));
+        if (fromDb.length) {
+          const merged = [...fromDb];
+          for (const dc of DEFAULT_COLLS) if (!merged.some((m) => m.id === dc.id)) merged.push(dc);
+          setColls(merged);
+        }
+      })
+      .catch(() => {});
+  }, []);
+  return colls;
+}
+
 function Products() {
+  const colls = useCollections();
   const [items, setItems] = useState([]);
   const [q, setQ] = useState('');
   const [collection, setCollection] = useState('');
@@ -127,9 +156,7 @@ function Products() {
           <InputLabel>Collection</InputLabel>
           <Select value={collection} label="Collection" onChange={(e) => setCollection(e.target.value)}>
             <MenuItem value="">All collections</MenuItem>
-            <MenuItem value="everyday">Everyday</MenuItem>
-            <MenuItem value="signature">Signature</MenuItem>
-            <MenuItem value="leather">Leather</MenuItem>
+            {colls.map((c) => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}
           </Select>
         </FormControl>
         <Button variant="outlined" startIcon={<DownloadIcon />} href="/api/admin/products/export">Export CSV</Button>
@@ -356,6 +383,7 @@ const Row = ({ children, cols = 2 }) => (
 );
 
 function ProductEditor({ product, onClose, onSaved }) {
+  const colls = useCollections();
   const [f, setF] = useState({
     name: product?.name || '',
     collection: product?.collection || 'everyday',
@@ -453,9 +481,7 @@ function ProductEditor({ product, onClose, onSaved }) {
           <FormControl fullWidth size="small">
             <InputLabel>Collection</InputLabel>
             <Select value={f.collection} label="Collection" onChange={set('collection')}>
-              <MenuItem value="everyday">Everyday</MenuItem>
-              <MenuItem value="signature">Signature</MenuItem>
-              <MenuItem value="leather">Leather</MenuItem>
+              {colls.map((c) => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}
             </Select>
           </FormControl>
           <TextField label="Price (Rs) *" type="number" value={f.price} onChange={set('price')} />

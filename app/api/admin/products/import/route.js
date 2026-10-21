@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { client, ready, normalizeCollection, sanitizeText, slugify } from '@/lib/db';
+import { client, ready, resolveCollection, sanitizeText, slugify } from '@/lib/db';
 import { requireAdmin } from '@/lib/admin-guard';
 import { checkOrigin } from '@/lib/csrf';
 import { checkRate } from '@/lib/rate-limit';
@@ -70,7 +70,7 @@ export async function POST(req) {
     const sku = sanitizeText(g('sku'), 40);
     const name = sanitizeText(g('name'), 200);
     if (!sku || !name) { skipped++; continue; }
-    const collection = normalizeCollection(g('collection')) || 'everyday';
+    const collection = (await resolveCollection(g('collection'))) || 'everyday';
     const price = parseInt(g('price'), 10);
     if (!Number.isInteger(price) || price <= 0) { skipped++; continue; }
     const old_price = parseInt(g('old_price'), 10);

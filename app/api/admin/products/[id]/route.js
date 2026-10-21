@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import {
-  client, ready, parseProduct, normalizeCollection,
+  client, ready, parseProduct, normalizeCollection, resolveCollection,
   isNonEmptyString, isPositiveInt,
   sanitizeText, sanitizeStringArray, isSafeImageUrl, slugify,
 } from '@/lib/db';
@@ -125,7 +125,7 @@ export async function PATCH(req, { params }) {
   const updates = {};
   for (const k of ALLOWED) if (k in b) updates[k] = b[k];
   if ('collection' in updates) {
-    const slug = normalizeCollection(updates.collection);
+    const slug = await resolveCollection(updates.collection);
     if (!slug) return NextResponse.json({ error: 'collection must be everyday|signature|leather.' }, { status: 400 });
     updates.collection = slug;
   }
