@@ -599,12 +599,21 @@ function Collections() {
   };
 
   const remove = async (c) => {
-    if (!confirm(`Delete collection "${c.data.name}" permanently? Products already in it keep the label but the collection page/filter disappears.`)) return;
+    const isDefault = ['everyday', 'signature', 'leather'].includes(c.data.id);
+    const text = isDefault
+      ? `Hide collection "${c.data.name}" from the website? It is a built-in collection, so it stays here switched off — turn it back on with the Live switch anytime.`
+      : `Delete collection "${c.data.name}" permanently? Products already in it keep the label but the collection page/filter disappears.`;
+    if (!confirm(text)) return;
     setMsg(''); setError('');
     try {
-      await apiContent('DELETE', `/api/admin/content/${c.id}`);
+      if (isDefault) {
+        await apiContent('PATCH', `/api/admin/content/${c.id}`, { active: 0 });
+        setMsg('Collection hidden from the website. Use the Live switch to bring it back.');
+      } else {
+        await apiContent('DELETE', `/api/admin/content/${c.id}`);
+        setMsg('Collection deleted.');
+      }
       await load();
-      setMsg('Collection deleted.');
     } catch (err) { setError(err.message); }
   };
 
@@ -638,12 +647,8 @@ function Collections() {
             </Box>
             <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
               <Button size="small" variant="outlined" onClick={() => setEditing(JSON.parse(JSON.stringify(c)))}>Edit</Button>
-              {!['everyday', 'signature', 'leather'].includes(c.data.id) && (
-                <>
-                  <FormControlLabel control={<Switch size="small" checked={!!c.active} onChange={() => toggleActive(c)} />} label={c.active ? 'Live' : 'Off'} sx={{ mr: 0 }} />
-                  <Button size="small" variant="outlined" color="error" onClick={() => remove(c)}>Delete</Button>
-                </>
-              )}
+              <FormControlLabel control={<Switch size="small" checked={!!c.active} onChange={() => toggleActive(c)} />} label={c.active ? 'Live' : 'Off'} sx={{ mr: 0 }} />
+              <Button size="small" variant="outlined" color="error" onClick={() => remove(c)}>Delete</Button>
             </Stack>
           </CardContent>
         </Card>
