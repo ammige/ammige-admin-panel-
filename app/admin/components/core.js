@@ -836,7 +836,7 @@ function Customers() {
   return (
     <Box>
       <TextField
-        placeholder="Search name / phone / city…"
+        placeholder="Search name / email / phone / city…"
         value={q}
         onChange={(e) => setQ(e.target.value)}
         sx={{ mb: 2, width: { xs: '100%', sm: 320 } }}
@@ -844,14 +844,15 @@ function Customers() {
       />
       <TableContainer component={Paper} sx={{ border: '1px solid #E8E2D6' }}>
         <Table>
-          <TableHead><TableRow><TableCell>Customer</TableCell><TableCell>Phone</TableCell><TableCell>City</TableCell><TableCell>Orders</TableCell><TableCell>Total Spent</TableCell><TableCell>Last Order</TableCell><TableCell align="right"></TableCell></TableRow></TableHead>
+          <TableHead><TableRow><TableCell>Customer</TableCell><TableCell>Phone</TableCell><TableCell>City</TableCell><TableCell>Joined</TableCell><TableCell>Orders</TableCell><TableCell>Total Spent</TableCell><TableCell>Last Order</TableCell><TableCell align="right"></TableCell></TableRow></TableHead>
           <TableBody>
             {list.map((c) => (
-              <Fragment key={c.phone}>
+              <Fragment key={c.id}>
                 <TableRow hover>
-                  <TableCell sx={{ maxWidth: 170 }}><Typography variant="body2" noWrap>{c.name || '—'}</Typography></TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{c.phone}</TableCell>
+                  <TableCell sx={{ maxWidth: 210 }}><Typography variant="body2" fontWeight={600} noWrap>{c.name || '—'}</Typography><Typography variant="caption" color="text.secondary" noWrap>{c.email}</Typography></TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{c.phone || '—'}</TableCell>
                   <TableCell>{c.city || '—'}</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{c.joined ? fmtDate(c.joined) : '—'}</TableCell>
                   <TableCell>{c.orders}</TableCell>
                   <TableCell sx={{ whiteSpace: 'nowrap' }}>{fmtRs(c.total_spent)}</TableCell>
                   <TableCell sx={{ whiteSpace: 'nowrap' }}>{c.last_order_id ? <>#{c.last_order_id} · {fmtDate(c.last_order)}</> : '—'}</TableCell>
@@ -859,7 +860,8 @@ function Customers() {
                 </TableRow>
                 {expanded === c.phone && (
                   <TableRow>
-                    <TableCell colSpan={7} sx={{ bgcolor: '#FBF9F4' }}>
+                    <TableCell colSpan={8} sx={{ bgcolor: '#FBF9F4' }}>
+                      {c.address && <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Address: {c.address}{c.city ? `, ${c.city}` : ''}</Typography>}
                       {history.length === 0 && <Typography variant="body2" color="text.secondary">Loading…</Typography>}
                       {history.map((o) => (
                         <Stack key={o.id} direction="row" spacing={1.5} alignItems="center" sx={{ py: 0.75, borderBottom: '1px solid #F1E9DA' }}>
@@ -876,7 +878,7 @@ function Customers() {
               </Fragment>
             ))}
             {list.length === 0 && (
-              <TableRow><TableCell colSpan={7} align="center" sx={{ py: 5 }}><Typography color="text.secondary">No customers yet</Typography></TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} align="center" sx={{ py: 5 }}><Typography color="text.secondary">No registered customers yet</Typography></TableCell></TableRow>
             )}
           </TableBody>
         </Table>

@@ -4,9 +4,13 @@ import { requireAdmin } from '@/lib/admin-guard';
 import { checkRate } from '@/lib/rate-limit';
 
 /**
- * Customers auto-built from orders.
- * GET /api/admin/customers?q=  → [{ name, phone, city, orders, total_spent, last_order }]
- * Grouped by normalized phone number.
+ * Registered customers — the accounts created on the storefront.
+ * GET /api/admin/customers?q=  → [{
+ *   id, name, email, phone, address, city, joined,
+ *   orders, total_spent, last_order, last_order_id
+ * }]
+ * Order stats are aggregated from orders.customer_id (orders can only be
+ * placed by signed-in accounts, so every order belongs to a user here).
  */
 export async function GET(req) {
   const denied = requireAdmin(req);
@@ -18,42 +22,51 @@ export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get('q') || '').trim().toLowerCase();
 
-  const r = await client().execute({
-    sql: 'SELECT id, customer, total, status, created_at FROM orders ORDER BY id DESC',
+  const rc = await client().execute({
+    sql: 'SELECT id, name, email, phone, address, city, created_at FROM customers ORDER BY id DESC',
   });
-  const map = new Map();
-  for (const row of r.rows) {
-    let cu = {};
-    try { cu = JSON.parse(row.customer); } catch { /* ignore */ }
-    const phone = String(cu.phone || '').replace(/[\s-]/g, '');
-    if (!phone) continue;
-    let e = map.get(phone);
-    if (!e) {
-      e = {
-        phone: cu.phone,
-        name: cu.name || '',
-        city: cu.city || '',
-        orders: 0,
-        total_spent: 0,
-        last_order: null,
-        last_order_id: null,
-      };
-      map.set(phone, e);
+  const ro = await client().execute({
+    sql: 'SELECT id, customer_id, total, status, created_at FROM orders WHERE customer_id IS NOT NULL ORDER BY id DESC',
+  });
+
+  const stats = new Map();
+  for (const row of ro.rows) {
+    const cid = Number(row.customer_id);
+    let s = stats.get(cid);
+    if (!s) {
+      s = { orders: 0, total_spent: 0, last_order: null, last_order_id: null };
+      stats.set(cid, s);
     }
-    e.orders += 1;
-    if (row.status !== 'cancelled') e.total_spent += Number(row.total) || 0;
-    if (!e.last_order || row.created_at > e.last_order) {
-      e.last_order = row.created_at;
-      e.last_order_id = row.id;
-      e.name = cu.name || e.name;
-      e.city = cu.city || e.city;
+    s.orders += 1;
+    if (row.status !== 'cancelled') s.total_spent += Number(row.total) || 0;
+    if (!s.last_order || row.created_at > s.last_order) {
+      s.last_order = row.created_at;
+      s.last_order_id = row.id;
     }
   }
-  let list = [...map.values()].sort((a, b) => b.total_spent - a.total_spent);
+
+  let list = rc.rows.map((c) => {
+    const s = stats.get(Number(c.id)) || { orders: 0, total_spent: 0, last_order: null, last_order_id: null };
+    return {
+      id: c.id,
+      name: c.name || '',
+      email: c.email || '',
+      phone: c.phone || '',
+      address: c.address || '',
+      city: c.city || '',
+      joined: c.created_at,
+      orders: s.orders,
+      total_spent: s.total_spent,
+      last_order: s.last_order,
+      last_order_id: s.last_order_id,
+    };
+  });
+
   if (q) {
     list = list.filter(
       (c) =>
         c.name.toLowerCase().includes(q) ||
+        c.email.toLowerCase().includes(q) ||
         String(c.phone).toLowerCase().includes(q) ||
         c.city.toLowerCase().includes(q)
     );
