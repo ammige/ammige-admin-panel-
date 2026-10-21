@@ -54,6 +54,16 @@ const adminGlobalStyles = (
       'img, video, svg': { maxWidth: '100%' },
       '.MuiTableContainer-root': { maxWidth: '100%' },
       'input, select, textarea': { maxWidth: '100%' },
+      // Native date/time inputs: force the admin font (Poppins) and normal
+      // spacing — the browser's internal mm/dd/yyyy segments overlap when
+      // they inherit condensed/letter-spaced styles.
+      'input[type="datetime-local"], input[type="date"], input[type="time"]': {
+        fontFamily: "var(--font-poppins), 'Poppins', system-ui, sans-serif",
+        fontSize: 14,
+        letterSpacing: 'normal',
+        textTransform: 'none',
+        minWidth: 0,
+      },
     }}
   />
 );

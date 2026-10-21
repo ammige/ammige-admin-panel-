@@ -13,7 +13,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import UploadIcon from '@mui/icons-material/Upload';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CloseIcon from '@mui/icons-material/Close';
-import { uploadFile, toPKTInput, fromPKTInput, AdminImageField } from './shared';
+import { uploadFile, toPKTInput, fromPKTInput, AdminImageField, DateTimeField } from './shared';
 
 const DEFAULT_COLLS = [
   { id: 'everyday', name: 'Everyday' },
@@ -521,10 +521,10 @@ function ProductEditor({ product, onClose, onSaved }) {
             </Select>
           </FormControl>
         </Row>
-        <Row>
-          <TextField label="Badge from (PKT)" type="datetime-local" InputLabelProps={{ shrink: true }} value={f.badge_start} onChange={set('badge_start')} />
-          <TextField label="Badge until (PKT)" type="datetime-local" InputLabelProps={{ shrink: true }} value={f.badge_end} onChange={set('badge_end')} />
-        </Row>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} useFlexGap sx={{ mb: 2 }}>
+          <DateTimeField label="Badge from (PKT)" value={f.badge_start} onChange={set('badge_start')} />
+          <DateTimeField label="Badge until (PKT)" value={f.badge_end} onChange={set('badge_end')} />
+        </Stack>
         <Box sx={{ mb: 2 }}>
           <TextField label="Tags (comma separated)" value={f.tags} onChange={set('tags')} placeholder="tote, work, sale" />
         </Box>

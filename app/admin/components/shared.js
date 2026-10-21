@@ -106,6 +106,42 @@ async function apiContent(method, url, body) {
   return d;
 }
 
+// Date/time fields: the label sits ABOVE the input as a caption — never a
+// floating MUI label. The floating label rendered inside the box and
+// overlapped Chrome's native mm/dd/yyyy segments (the garbled inputs the
+// user screenshotted). Caption-above makes overlap impossible, and the
+// field wraps to its own line instead of squeezing below ~230px.
+const dtInputSx = {
+  '& input[type="datetime-local"], & input[type="date"], & input[type="time"]': {
+    fontFamily: "var(--font-poppins), 'Poppins', system-ui, sans-serif",
+    fontSize: 14,
+    letterSpacing: 'normal',
+    textTransform: 'none',
+    lineHeight: 1.5,
+    minWidth: 0,
+  },
+  '& input::-webkit-datetime-edit': { padding: 0 },
+  '& input::-webkit-calendar-picker-indicator': { cursor: 'pointer', marginLeft: 4, opacity: 0.6 },
+};
+
+function DateTimeField({ label, value, onChange, minW = 230 }) {
+  return (
+    <Box sx={{ flex: `1 1 ${minW}px`, minWidth: minW, maxWidth: '100%' }}>
+      <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 600, color: 'text.secondary' }}>{label}</Typography>
+      <TextField type="datetime-local" value={value || ''} onChange={onChange} sx={dtInputSx} />
+    </Box>
+  );
+}
+
+function DateField({ label, value, onChange, minW = 200 }) {
+  return (
+    <Box sx={{ flex: `1 1 ${minW}px`, minWidth: minW, maxWidth: '100%' }}>
+      <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 600, color: 'text.secondary' }}>{label}</Typography>
+      <TextField type="date" value={value || ''} onChange={onChange} sx={dtInputSx} />
+    </Box>
+  );
+}
+
 /** Status + active + schedule fields used by every content type (MUI). */
 function ScheduleFields({ value, onChange }) {
   const v = value || {};
@@ -115,7 +151,7 @@ function ScheduleFields({ value, onChange }) {
   };
   const setDate = (k) => (e) => onChange({ ...v, [k]: fromPKTInput(e.target.value) });
   return (
-    <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap sx={{ my: 1 }}>
+    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} flexWrap="wrap" useFlexGap sx={{ my: 1 }}>
       <FormControl size="small" sx={{ minWidth: 150 }}>
         <InputLabel>Status</InputLabel>
         <Select value={v.status || 'published'} label="Status" onChange={set('status')}>
@@ -128,21 +164,15 @@ function ScheduleFields({ value, onChange }) {
         control={<Switch checked={v.active !== 0} onChange={set('active')} />}
         label="Active"
       />
-      <TextField
-        type="datetime-local"
+      <DateTimeField
         label="Start (PKT, optional)"
-        InputLabelProps={{ shrink: true }}
         value={toPKTInput(v.starts_at)}
         onChange={setDate('starts_at')}
-        sx={{ minWidth: 210, width: 'auto' }}
       />
-      <TextField
-        type="datetime-local"
+      <DateTimeField
         label="End (PKT, optional)"
-        InputLabelProps={{ shrink: true }}
         value={toPKTInput(v.ends_at)}
         onChange={setDate('ends_at')}
-        sx={{ minWidth: 210, width: 'auto' }}
       />
     </Stack>
   );
@@ -218,4 +248,4 @@ function AdminImageField({ label, value, alt, onChange, onAltChange, hint }) {
   );
 }
 
-export { fmtRs, fmtDate, prepImage, uploadFile, toPKTInput, fromPKTInput, formatPKT, apiContent, ScheduleFields, LivePill, AdminImageField };
+export { fmtRs, fmtDate, prepImage, uploadFile, toPKTInput, fromPKTInput, formatPKT, apiContent, ScheduleFields, DateTimeField, DateField, LivePill, AdminImageField };

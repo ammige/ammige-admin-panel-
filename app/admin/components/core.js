@@ -14,7 +14,7 @@ import AddIcon from '@mui/icons-material/Add';
 import PrintIcon from '@mui/icons-material/Print';
 import CloseIcon from '@mui/icons-material/Close';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { fmtRs, fmtDate } from './shared';
+import { fmtRs, fmtDate, DateField } from './shared';
 
 const STATUSES = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
 const NEXT_STATUS = { pending: 'confirmed', confirmed: 'shipped', shipped: 'delivered' };
@@ -1024,7 +1024,7 @@ function CouponEditor({ coupon, onClose, onSaved }) {
               <TextField label="Min order (Rs)" type="number" inputProps={{ min: 0 }} value={f.min_order} onChange={set('min_order')} placeholder="0" />
               <TextField label="Usage limit" type="number" inputProps={{ min: 1 }} value={f.usage_limit} onChange={set('usage_limit')} placeholder="Unlimited" />
             </Row>
-            <TextField label="Expiry date" type="date" InputLabelProps={{ shrink: true }} value={f.expires_at} onChange={set('expires_at')} />
+            <DateField label="Expiry date" value={f.expires_at} onChange={set('expires_at')} />
             <FormControlLabel control={<Switch checked={!!f.active} onChange={set('active')} />} label="Active" />
             {error && <Alert severity="error">{error}</Alert>}
           </Stack>

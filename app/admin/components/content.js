@@ -13,7 +13,7 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import CloseIcon from '@mui/icons-material/Close';
 import UploadIcon from '@mui/icons-material/Upload';
-import { apiContent, ScheduleFields, LivePill, AdminImageField, formatPKT, toPKTInput, fromPKTInput, uploadFile } from './shared';
+import { apiContent, ScheduleFields, DateTimeField, LivePill, AdminImageField, formatPKT, toPKTInput, fromPKTInput, uploadFile } from './shared';
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                              */
@@ -667,7 +667,7 @@ function Popups() {
             </Box>
             <Row>
               <TextField label="Coupon code (optional)" value={e.data.coupon_code} onChange={(ev) => setD('coupon_code', ev.target.value.toUpperCase())} placeholder="WELCOME10" />
-              <TextField label="Countdown ends (PKT, optional)" type="datetime-local" InputLabelProps={{ shrink: true }} value={toPKTInput(e.data.countdown_ends_at)} onChange={(ev) => setD('countdown_ends_at', fromPKTInput(ev.target.value) || '')} />
+              <DateTimeField label="Countdown ends (PKT, optional)" value={toPKTInput(e.data.countdown_ends_at)} onChange={(ev) => setD('countdown_ends_at', fromPKTInput(ev.target.value) || '')} />
             </Row>
             <FormControlLabel
               control={<Switch checked={!!e.data.newsletter_enabled} onChange={(ev) => setD('newsletter_enabled', ev.target.checked)} />}
