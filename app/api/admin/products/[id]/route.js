@@ -135,10 +135,10 @@ export async function PATCH(req, { params }) {
   if ('name' in updates && !sanitizeText(updates.name, 200)) {
     return NextResponse.json({ error: 'name cannot be empty.' }, { status: 400 });
   }
-  if ('colors' in updates && !Array.isArray(updates.colors)) {
+  if ('colors' in updates && !Array.isArray(updates.colors) && typeof updates.colors !== 'string') {
     return NextResponse.json({ error: 'colors must be an array.' }, { status: 400 });
   }
-  if ('sizes' in updates && !Array.isArray(updates.sizes)) {
+  if ('sizes' in updates && !Array.isArray(updates.sizes) && typeof updates.sizes !== 'string') {
     return NextResponse.json({ error: 'sizes must be an array.' }, { status: 400 });
   }
   if ('variant_images' in updates && updates.variant_images != null &&

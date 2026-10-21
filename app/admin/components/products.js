@@ -5,7 +5,7 @@ import {
   Box, Stack, Paper, Button, TextField, FormControl, InputLabel, Select, MenuItem,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Checkbox, Chip,
   Pagination, Dialog, DialogTitle, DialogContent, DialogActions, Alert, Typography,
-  IconButton, InputAdornment, CircularProgress,
+  IconButton, InputAdornment, CircularProgress, Collapse, useMediaQuery, useTheme,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
@@ -71,6 +71,17 @@ function Products() {
   const remove = async (id) => {
     if (!confirm('Deactivate this product?')) return;
     await fetch(`/api/admin/products/${id}`, { method: 'DELETE' });
+    load();
+  };
+
+  const removeForever = async (p) => {
+    if (!confirm(`"${p.name}" ko hamesha ke liye delete karein? Ye wapas nahi ayega.`)) return;
+    const r = await fetch('/api/admin/products/bulk', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: [p.id] }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!d.ok) { alert(d.error || 'Delete failed'); return; }
     load();
   };
 
@@ -215,7 +226,9 @@ function Products() {
                 <TableCell><Chip size="small" label={p.active ? 'Active' : 'Hidden'} color={p.active ? 'success' : 'default'} variant={p.active ? 'filled' : 'outlined'} /></TableCell>
                 <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
                   <Button size="small" variant="outlined" onClick={() => setEditing(p)} sx={{ mr: 1 }}>Edit</Button>
-                  <Button size="small" variant="outlined" color="error" onClick={() => remove(p.id)}>Hide</Button>
+                  {p.active
+                    ? <Button size="small" variant="outlined" color="error" onClick={() => remove(p.id)}>Hide</Button>
+                    : <Button size="small" variant="outlined" color="error" onClick={() => removeForever(p)}>Delete forever</Button>}
                 </TableCell>
               </TableRow>
             ))}
@@ -382,19 +395,27 @@ const Row = ({ children, cols = 2 }) => (
   <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: `repeat(${cols}, 1fr)` }, mb: 2 }}>{children}</Box>
 );
 
+// Product fields like colors/sizes/tags come back from the API as
+// arrays, but the form edits them as comma-separated text. Normalize
+// both ways or save() crashes with ".trim is not a function".
+const asText = (v) => (Array.isArray(v) ? v.join(', ') : (v == null ? '' : String(v)));
+
 function ProductEditor({ product, onClose, onSaved }) {
   const colls = useCollections();
+  const theme = useTheme();
+  const fullScreenEd = useMediaQuery(theme.breakpoints.down('sm'));
+  const [showMore, setShowMore] = useState(false);
   const [f, setF] = useState({
     name: product?.name || '',
     collection: product?.collection || 'everyday',
     price: product?.price ?? '',
     old_price: product?.old_price || '',
-    colors: product?.colors || '',
-    sizes: product?.sizes || '',
+    colors: asText(product?.colors),
+    sizes: asText(product?.sizes),
     material: product?.material || '',
     description: product?.description || '',
     description_html: product?.description_html || '',
-    tags: product?.tags || '',
+    tags: asText(product?.tags),
     image: product?.image || '',
     image2: product?.image2 || '',
     variant_images: product?.variant_images || {},
@@ -425,12 +446,12 @@ function ProductEditor({ product, onClose, onSaved }) {
         collection: f.collection,
         price: Number(f.price),
         old_price: f.old_price ? Number(f.old_price) : null,
-        colors: f.colors.trim(),
-        sizes: f.sizes.trim(),
+        colors: asText(f.colors).split(',').map((x) => x.trim()).filter(Boolean),
+        sizes: asText(f.sizes).split(',').map((x) => x.trim()).filter(Boolean),
         material: f.material.trim(),
         description: f.description.trim(),
         description_html: f.description_html.trim() || null,
-        tags: f.tags.trim(),
+        tags: asText(f.tags).trim(),
         image: f.image.trim(),
         image2: f.image2.trim() || null,
         variant_images: f.variant_images,
@@ -462,7 +483,7 @@ function ProductEditor({ product, onClose, onSaved }) {
   }
 
   return (
-    <Dialog open onClose={onClose} maxWidth="md" fullWidth scroll="paper">
+    <Dialog open onClose={onClose} maxWidth="md" fullWidth scroll="paper" fullScreen={fullScreenEd}>
       <DialogTitle sx={{ pr: 6 }}>
         {product ? 'Edit product' : 'New product'}
         <IconButton onClick={onClose} sx={{ position: 'absolute', right: 12, top: 10 }} aria-label="Close">
@@ -517,6 +538,7 @@ function ProductEditor({ product, onClose, onSaved }) {
         <Box sx={{ mb: 2 }}>
           <TextField label="Description" value={f.description} onChange={set('description')} multiline rows={3} />
         </Box>
+        <Collapse in={showMore}>
         <Box sx={{ mb: 2 }}>
           <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
             <Typography variant="subtitle2">Rich description (HTML)</Typography>
@@ -533,10 +555,15 @@ function ProductEditor({ product, onClose, onSaved }) {
               inputProps={{ style: { fontFamily: 'monospace', fontSize: 12 } }} />
           )}
         </Box>
+        </Collapse>
         <ImageField label="Main image *" value={f.image} onChange={(v) => setF({ ...f, image: v })}
           hint="The main product photo — upload from your device, no link needed." />
         <ImageField label="Hover image (2nd photo — shows on hover)" value={f.image2}
           onChange={(v) => setF({ ...f, image2: v })} />
+        <Button size="small" onClick={() => setShowMore(!showMore)} sx={{ px: 0, mb: 1 }}>
+          {showMore ? '▾ Mazeed options chhupayen' : '▸ Mazeed options (rich text, color photos, 360°/3D, video)'}
+        </Button>
+        <Collapse in={showMore}>
         <ColorPhotos colors={f.colors} variantImages={f.variant_images}
           onChange={(v) => setF({ ...f, variant_images: v })} />
         <FramesField value={f.spin_frames} onChange={(v) => setF({ ...f, spin_frames: v })} />
@@ -575,6 +602,7 @@ function ProductEditor({ product, onClose, onSaved }) {
             YouTube watch/shorts/embed link, direct .mp4/.webm URL, or upload an MP4 (max 50 MB). Leave empty for no video.
           </Typography>
         </Box>
+        </Collapse>
       </DialogContent>
       <DialogActions sx={{ p: 2 }}>
         <Button onClick={onClose}>Cancel</Button>
