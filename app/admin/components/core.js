@@ -813,6 +813,32 @@ function Customers() {
   const [q, setQ] = useState('');
   const [expanded, setExpanded] = useState(null);
   const [history, setHistory] = useState([]);
+  const [dlg, setDlg] = useState(null); // null | { mode: 'add' } | { mode: 'edit', c }
+  const [frm, setFrm] = useState({ name: '', email: '', phone: '', address: '', city: '', password: '' });
+  const [saving, setSaving] = useState(false);
+  const [dlgErr, setDlgErr] = useState('');
+
+  const openAdd = () => { setFrm({ name: '', email: '', phone: '', address: '', city: '', password: '' }); setDlgErr(''); setDlg({ mode: 'add' }); };
+  const openEdit = (c) => { setFrm({ name: c.name || '', email: c.email || '', phone: c.phone || '', address: c.address || '', city: c.city || '', password: '' }); setDlgErr(''); setDlg({ mode: 'edit', c }); };
+  const saveCustomer = async () => {
+    setSaving(true); setDlgErr('');
+    try {
+      const isAdd = dlg.mode === 'add';
+      const r = await fetch(isAdd ? '/api/admin/customers' : `/api/admin/customers/${dlg.c.id}`, {
+        method: isAdd ? 'POST' : 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(frm),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Save failed.');
+      setDlg(null); load();
+    } catch (e) { setDlgErr(e.message || 'Save failed.'); } finally { setSaving(false); }
+  };
+  const removeCustomer = async (c) => {
+    if (!window.confirm(`Delete the account of ${c.name || c.email}? Their past orders stay in Orders, but the account is removed.`)) return;
+    await fetch(`/api/admin/customers/${c.id}`, { method: 'DELETE' });
+    load();
+  };
 
   const load = useCallback(async () => {
     const qs = q.trim() ? `?q=${encodeURIComponent(q.trim())}` : '';
@@ -842,6 +868,7 @@ function Customers() {
         sx={{ mb: 2, width: { xs: '100%', sm: 320 } }}
         InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>) }}
       />
+      <Button variant="contained" onClick={openAdd} sx={{ mb: 2 }}>+ Add Customer</Button>
       <TableContainer component={Paper} sx={{ border: '1px solid #E8E2D6' }}>
         <Table>
           <TableHead><TableRow><TableCell>Customer</TableCell><TableCell>Phone</TableCell><TableCell>City</TableCell><TableCell>Joined</TableCell><TableCell>Orders</TableCell><TableCell>Total Spent</TableCell><TableCell>Last Order</TableCell><TableCell align="right"></TableCell></TableRow></TableHead>
@@ -856,7 +883,7 @@ function Customers() {
                   <TableCell>{c.orders}</TableCell>
                   <TableCell sx={{ whiteSpace: 'nowrap' }}>{fmtRs(c.total_spent)}</TableCell>
                   <TableCell sx={{ whiteSpace: 'nowrap' }}>{c.last_order_id ? <>#{c.last_order_id} · {fmtDate(c.last_order)}</> : '—'}</TableCell>
-                  <TableCell align="right"><Button size="small" variant="outlined" onClick={() => openHistory(c.phone)}>{expanded === c.phone ? 'Hide' : 'History'}</Button></TableCell>
+                  <TableCell align="right"><Stack direction="row" spacing={0.5} justifyContent="flex-end"><Button size="small" variant="outlined" onClick={() => openHistory(c.phone)}>{expanded === c.phone ? 'Hide' : 'History'}</Button><Button size="small" variant="outlined" onClick={() => openEdit(c)}>Edit</Button><Button size="small" variant="outlined" color="error" onClick={() => removeCustomer(c)}>Delete</Button></Stack></TableCell>
                 </TableRow>
                 {expanded === c.phone && (
                   <TableRow>
@@ -883,6 +910,24 @@ function Customers() {
           </TableBody>
         </Table>
       </TableContainer>
+      <Dialog open={!!dlg} onClose={() => setDlg(null)} fullWidth maxWidth="sm">
+        <DialogTitle>{dlg?.mode === 'add' ? 'Add Customer' : 'Edit Customer'}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField label="Full name" value={frm.name} onChange={(e) => setFrm({ ...frm, name: e.target.value })} fullWidth />
+            <TextField label="Email" value={frm.email} onChange={(e) => setFrm({ ...frm, email: e.target.value })} fullWidth />
+            <TextField label="Phone" value={frm.phone} onChange={(e) => setFrm({ ...frm, phone: e.target.value })} fullWidth />
+            <TextField label="Address" value={frm.address} onChange={(e) => setFrm({ ...frm, address: e.target.value })} fullWidth />
+            <TextField label="City" value={frm.city} onChange={(e) => setFrm({ ...frm, city: e.target.value })} fullWidth />
+            <TextField label={dlg?.mode === 'add' ? 'Password (min 8 characters)' : 'New password (blank = keep current)'} type="password" value={frm.password} onChange={(e) => setFrm({ ...frm, password: e.target.value })} fullWidth />
+            {dlgErr && <Typography color="error" variant="body2">{dlgErr}</Typography>}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDlg(null)}>Cancel</Button>
+          <Button variant="contained" onClick={saveCustomer} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
