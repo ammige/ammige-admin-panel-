@@ -43,7 +43,7 @@ function clean(k, v, existing) {
       return JSON.stringify(out);
     }
     case 'sizes': return JSON.stringify(sanitizeStringArray(v));
-    case 'spin_frames': return JSON.stringify(sanitizeStringArray(v).filter((u) => isSafeImageUrl(u)).slice(0, 36));
+    case 'spin_frames': return JSON.stringify(sanitizeStringArray(v, 36, 300).filter((u) => isSafeImageUrl(u)).slice(0, 36));
     case 'video_url': {
       const s = sanitizeText(v, 500);
       return s || null;

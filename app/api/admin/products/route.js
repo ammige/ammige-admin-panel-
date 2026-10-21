@@ -108,7 +108,7 @@ export async function POST(req) {
     return NextResponse.json({ error: 'variant_images must be an object of color → image URL (max 12).' }, { status: 400 });
   }
   const sizes = JSON.stringify(sanitizeStringArray(b.sizes));
-  const spin_frames = JSON.stringify(sanitizeStringArray(b.spin_frames).filter((u) => isSafeImageUrl(u)).slice(0, 36));
+  const spin_frames = JSON.stringify(sanitizeStringArray(b.spin_frames, 36, 300).filter((u) => isSafeImageUrl(u)).slice(0, 36));
   const video_url = sanitizeText(b.video_url, 500) || null;
   const model_3d = sanitizeText(b.model_3d, 500) || null;
   if (model_3d && !/^(\/media\/models\/[a-zA-Z0-9_-]+\.glb|https?:\/\/.+\.glb)$/i.test(model_3d)) {
