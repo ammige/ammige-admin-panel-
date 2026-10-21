@@ -28,7 +28,7 @@ export async function GET(req) {
     args.push(status);
   }
   if (payment) {
-    if (payment !== 'cod' && payment !== 'bank') {
+    if (payment !== 'cod' && payment !== 'bank' && payment !== 'advance') {
       return NextResponse.json({ error: 'Invalid payment filter.' }, { status: 400 });
     }
     where.push('payment = ?');

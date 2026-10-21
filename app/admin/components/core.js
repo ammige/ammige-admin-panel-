@@ -99,6 +99,14 @@ function Dashboard() {
   const [range, setRange] = useState('7d');
   const [d, setD] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [advPending, setAdvPending] = useState(0);
+
+  useEffect(() => {
+    fetch('/api/admin/orders?payment=advance&limit=100')
+      .then((r) => r.json())
+      .then((j) => setAdvPending((j.items || []).filter((x) => x.advance_status === 'pending_verification').length))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -123,6 +131,13 @@ function Dashboard() {
         <Box sx={{ flex: 1 }} />
         <Button variant="outlined" startIcon={<DownloadIcon />} href="/api/admin/export?type=orders">Orders CSV</Button>
       </Stack>
+
+      {advPending > 0 && (
+        <Alert severity="warning" sx={{ mb: 2.5 }}>
+          <b>{advPending} advance payment{advPending > 1 ? 's' : ''} awaiting verification.</b>{' '}
+          Open the order in Orders → Payment: Advance, check the transaction in your EasyPaisa / bank account, then Approve or Reject.
+        </Alert>
+      )}
 
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' } }}>
         <StatCard label="Revenue" value={fmtRs(k.revenue)}><ChangeBadge v={ch.revenue} /></StatCard>
@@ -264,6 +279,7 @@ function Orders({ onPrint }) {
             <MenuItem value="">All payments</MenuItem>
             <MenuItem value="cod">COD</MenuItem>
             <MenuItem value="bank">Bank</MenuItem>
+            <MenuItem value="advance">Advance</MenuItem>
           </Select>
         </FormControl>
         <Button variant="outlined" startIcon={<DownloadIcon />} href="/api/admin/export?type=orders">CSV</Button>
@@ -296,9 +312,14 @@ function Orders({ onPrint }) {
                 <TableCell>{o.items?.reduce((s, i) => s + i.qty, 0)}</TableCell>
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>
                   {fmtRs(o.total)}
-                  {o.discount ? <><br /><Typography variant="caption" sx={{ color: '#1E7A46' }}>−{fmtRs(o.discount)} coupon</Typography></> : null}
+                  {o.discount ? <><br /><Typography variant="caption" sx={{ color: '#1E7A46' }}>−{fmtRs(o.discount)} {o.coupon_code ? 'coupon' : 'discount'}</Typography></> : null}
                 </TableCell>
-                <TableCell sx={{ textTransform: 'uppercase', fontSize: 12 }}>{o.payment}</TableCell>
+                <TableCell>
+                  <Typography variant="body2" sx={{ textTransform: 'uppercase', fontSize: 12 }}>{o.payment}</Typography>
+                  {o.advance_status === 'pending_verification' && <Chip label="⏳ Verify payment" size="small" color="warning" sx={{ mt: 0.5 }} />}
+                  {o.advance_status === 'verified' && <Chip label="Advance ✓" size="small" color="success" sx={{ mt: 0.5 }} />}
+                  {o.advance_status === 'rejected' && <Chip label="Advance rejected" size="small" color="error" sx={{ mt: 0.5 }} />}
+                </TableCell>
                 <TableCell><StatusChip status={o.status} /></TableCell>
                 <TableCell align="right"><Button size="small" variant="outlined" onClick={() => openDetail(o.id)}>View</Button></TableCell>
               </TableRow>
@@ -335,6 +356,32 @@ function OrderDetail({ order, onClose, onUpdated, onPrint }) {
   const [notes, setNotes] = useState(order.admin_notes || '');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
+  const [verifyAmt, setVerifyAmt] = useState('');
+  const [rejectReason, setRejectReason] = useState('');
+  const [advBusy, setAdvBusy] = useState(false);
+  const [advMsg, setAdvMsg] = useState('');
+
+  const verifyPayment = async (action) => {
+    setAdvBusy(true);
+    setAdvMsg('');
+    const payload = { action };
+    if (action === 'approve' && verifyAmt !== '') payload.verified_amount = Number(verifyAmt);
+    if (action === 'reject') payload.reason = rejectReason;
+    const r = await fetch(`/api/admin/orders/${o.id}/advance`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const d = await r.json().catch(() => ({}));
+    setAdvBusy(false);
+    if (r.ok) {
+      setO(d);
+      onUpdated(d);
+      setAdvMsg(action === 'approve' ? 'Payment verified ✓ — discount applied, order confirmed.' : 'Payment rejected — the customer can resubmit proof from the track page.');
+    } else {
+      setAdvMsg(d.error || 'Verification failed');
+    }
+  };
 
   useEffect(() => {
     setO(order);
@@ -449,6 +496,54 @@ function OrderDetail({ order, onClose, onUpdated, onPrint }) {
             <Typography fontWeight={700}>Total</Typography><Typography fontWeight={700} variant="h6">{fmtRs(o.total)}</Typography>
           </Stack>
         </Box>
+
+        {o.advance_status && o.advance_status !== 'none' && (
+          <Box sx={{ mt: 2, p: 2, border: '1px solid #E8E2D6', borderRadius: 2, bgcolor: o.advance_status === 'pending_verification' ? '#FDF6E3' : o.advance_status === 'verified' ? '#EFF7F1' : '#FBEEE9' }}>
+            <SectionTitle>Advance Payment — {
+              o.advance_status === 'pending_verification' ? 'Pending Verification' :
+              o.advance_status === 'verified' ? 'Verified ✓' : 'Rejected'
+            }</SectionTitle>
+            <Stack spacing={0.5}>
+              <Typography variant="body2">Advance required: <b>{fmtRs(o.advance_amount)}</b> · Promised discount: <b>{fmtRs(o.advance_discount)}</b></Typography>
+              <Typography variant="body2">Transaction ID: <b>{o.advance_txn_id || '—'}</b></Typography>
+              {o.advance_status === 'verified' && (
+                <Typography variant="body2">
+                  Verified amount: <b>{fmtRs(o.advance_verified_amount)}</b> by {o.advance_verified_by} on {fmtDate(o.advance_verified_at)} ·
+                  {' '}COD balance on delivery: <b>{fmtRs(o.cod_balance)}</b>
+                </Typography>
+              )}
+              {o.advance_status === 'rejected' && o.advance_reject_reason && (
+                <Typography variant="body2" color="error">Reason sent to customer: {o.advance_reject_reason}</Typography>
+              )}
+            </Stack>
+            {o.advance_proof_url && (
+              <Box sx={{ mt: 1.5 }}>
+                <Typography variant="caption" color="text.secondary">Customer&apos;s payment screenshot (click to open full size)</Typography>
+                <Box component="a" href={o.advance_proof_url} target="_blank" rel="noreferrer" sx={{ display: 'block', mt: 0.5 }}>
+                  <Box component="img" src={o.advance_proof_url} alt="Payment screenshot" sx={{ width: 180, maxWidth: '100%', borderRadius: 1, border: '1px solid #E8E2D6' }} />
+                </Box>
+              </Box>
+            )}
+            {o.advance_status === 'pending_verification' && (
+              <Box sx={{ mt: 2 }}>
+                <Alert severity="info" sx={{ mb: 1.5 }}>Check this transaction in your actual EasyPaisa / bank account first. Approving applies the {fmtRs(o.advance_discount)} discount and confirms the order.</Alert>
+                <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap alignItems="flex-start">
+                  <TextField label="Verified amount (Rs)" type="number" size="small" sx={{ width: 190 }}
+                    value={verifyAmt} onChange={(e) => setVerifyAmt(e.target.value)}
+                    placeholder={String(o.advance_amount)} helperText="Leave empty = full advance" />
+                  <Button variant="contained" color="success" disabled={advBusy} onClick={() => verifyPayment('approve')}>Approve Payment</Button>
+                </Stack>
+                <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap alignItems="flex-start" sx={{ mt: 1.5 }}>
+                  <TextField label="Rejection reason (customer will see this)" size="small" sx={{ flex: '1 1 260px' }}
+                    value={rejectReason} onChange={(e) => setRejectReason(e.target.value)}
+                    placeholder="e.g. Amount not received in our account" />
+                  <Button variant="outlined" color="error" disabled={advBusy || !rejectReason.trim()} onClick={() => verifyPayment('reject')}>Reject Payment</Button>
+                </Stack>
+              </Box>
+            )}
+            {advMsg && <Alert severity={advMsg.includes('✓') || advMsg.startsWith('Payment rejected') ? 'success' : 'error'} sx={{ mt: 1.5 }}>{advMsg}</Alert>}
+          </Box>
+        )}
 
         {o.notes && <Typography variant="body2" sx={{ mt: 1.5 }}><b>Customer note:</b> {o.notes}</Typography>}
 
@@ -1025,6 +1120,10 @@ function Settings() {
   const [f, setF] = useState({
     admin_password: '', whatsapp: '', announcement: '', tagline: '', brand: '',
     shipping_flat: '', free_shipping_threshold: '', payment_cod: true, payment_bank: true,
+    advance_enabled: false, advance_amount: '500', advance_discount: '150',
+    adv_easypaisa_name: '', adv_easypaisa_number: '',
+    adv_bank_name: '', adv_bank_title: '', adv_bank_account: '', adv_bank_iban: '',
+    adv_instructions: '',
     video_url: '',
     marquee_enabled: true, marquee_items: '',
     popup_enabled: false, popup_title: '', popup_text: '', popup_cta: '', popup_delay: '8',
@@ -1045,6 +1144,16 @@ function Settings() {
         free_shipping_threshold: d.free_shipping_threshold ?? '5000',
         payment_cod: d.payment_cod !== '0',
         payment_bank: d.payment_bank !== '0',
+        advance_enabled: d.advance_enabled === '1',
+        advance_amount: d.advance_amount ?? '500',
+        advance_discount: d.advance_discount ?? '150',
+        adv_easypaisa_name: d.adv_easypaisa_name || '',
+        adv_easypaisa_number: d.adv_easypaisa_number || '',
+        adv_bank_name: d.adv_bank_name || '',
+        adv_bank_title: d.adv_bank_title || '',
+        adv_bank_account: d.adv_bank_account || '',
+        adv_bank_iban: d.adv_bank_iban || '',
+        adv_instructions: d.adv_instructions || '',
         video_url: d.video_url || '',
         marquee_enabled: d.marquee_enabled !== '0',
         marquee_items: d.marquee_items || '',
@@ -1070,6 +1179,16 @@ function Settings() {
       free_shipping_threshold: f.free_shipping_threshold,
       payment_cod: f.payment_cod,
       payment_bank: f.payment_bank,
+      advance_enabled: f.advance_enabled,
+      advance_amount: f.advance_amount,
+      advance_discount: f.advance_discount,
+      adv_easypaisa_name: f.adv_easypaisa_name,
+      adv_easypaisa_number: f.adv_easypaisa_number,
+      adv_bank_name: f.adv_bank_name,
+      adv_bank_title: f.adv_bank_title,
+      adv_bank_account: f.adv_bank_account,
+      adv_bank_iban: f.adv_bank_iban,
+      adv_instructions: f.adv_instructions,
       video_url: f.video_url,
       marquee_enabled: f.marquee_enabled,
       marquee_items: f.marquee_items,
@@ -1132,6 +1251,33 @@ function Settings() {
           <Stack spacing={0.5}>
             <FormControlLabel control={<Switch checked={f.payment_cod} onChange={set('payment_cod')} />} label="Cash on Delivery" />
             <FormControlLabel control={<Switch checked={f.payment_bank} onChange={set('payment_bank')} />} label="Bank Transfer" />
+          </Stack>
+
+          <S mt={3.5}>Advance Payments (Manual Verification)</S>
+          <Stack spacing={2}>
+            <FormControlLabel control={<Switch checked={f.advance_enabled} onChange={set('advance_enabled')} />} label="Enable advance payment option at checkout" />
+            <Typography variant="body2" color="text.secondary" sx={{ mt: -1 }}>
+              The customer pays the advance to one of the accounts below, uploads the screenshot and transaction ID.
+              The order stays <b>Pending Verification</b> until you check the transaction in your account and approve it here — the discount applies only after approval.
+            </Typography>
+            <Row>
+              <TextField label="Advance Amount (PKR)" type="number" inputProps={{ min: 0 }} value={f.advance_amount} onChange={set('advance_amount')} />
+              <TextField label="Discount on Verification (PKR)" type="number" inputProps={{ min: 0 }} value={f.advance_discount} onChange={set('advance_discount')} />
+            </Row>
+            <Row>
+              <TextField label="EasyPaisa Account Number" value={f.adv_easypaisa_number} onChange={set('adv_easypaisa_number')} placeholder="03xx xxxxxxx" />
+              <TextField label="EasyPaisa Account Title" value={f.adv_easypaisa_name} onChange={set('adv_easypaisa_name')} placeholder="Account holder name" />
+            </Row>
+            <Row>
+              <TextField label="Bank Name" value={f.adv_bank_name} onChange={set('adv_bank_name')} placeholder="e.g. Meezan Bank" />
+              <TextField label="Bank Account Title" value={f.adv_bank_title} onChange={set('adv_bank_title')} />
+            </Row>
+            <Row>
+              <TextField label="Bank Account Number" value={f.adv_bank_account} onChange={set('adv_bank_account')} />
+              <TextField label="Bank IBAN" value={f.adv_bank_iban} onChange={set('adv_bank_iban')} placeholder="PK36…" />
+            </Row>
+            <TextField label="Instructions shown to customer" value={f.adv_instructions} onChange={set('adv_instructions')} multiline rows={2}
+              placeholder="Send the advance to any account below, then upload the payment screenshot and enter the transaction ID." />
           </Stack>
 
           <S mt={3.5}>Security</S>

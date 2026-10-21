@@ -19,6 +19,11 @@ const ALLOWED = [
   'theme_primary', 'theme_secondary', 'theme_accent',
   'theme_font', 'theme_button_style', 'theme_radius',
   'maintenance_enabled', 'maintenance_message',
+  // Manual advance payment verification
+  'advance_enabled', 'advance_amount', 'advance_discount',
+  'adv_easypaisa_name', 'adv_easypaisa_number',
+  'adv_bank_name', 'adv_bank_title', 'adv_bank_account', 'adv_bank_iban',
+  'adv_instructions',
 ];
 
 function adminWriteLimit(req) {
@@ -70,6 +75,14 @@ export async function PATCH(req) {
         return NextResponse.json({ error: 'whatsapp must be a valid phone number.' }, { status: 400 });
       }
       cleaned[k] = b[k].trim();
+    } else if (k === 'advance_enabled') {
+      cleaned[k] = b[k] ? '1' : '0';
+    } else if (k === 'advance_amount' || k === 'advance_discount') {
+      const v = Number(b[k]);
+      if (!Number.isInteger(v) || v < 0) {
+        return NextResponse.json({ error: `${k} must be a non-negative integer (PKR).` }, { status: 400 });
+      }
+      cleaned[k] = String(v);
     } else if (k === 'shipping_flat' || k === 'free_shipping_threshold') {
       const v = Number(b[k]);
       if (!Number.isInteger(v) || v < 0) {
@@ -142,6 +155,10 @@ export async function PATCH(req) {
         return NextResponse.json({ error: 'contact_email must be a valid email or empty.' }, { status: 400 });
       }
       cleaned[k] = v;
+    } else if (['adv_easypaisa_name', 'adv_easypaisa_number', 'adv_bank_name', 'adv_bank_title', 'adv_bank_account', 'adv_bank_iban', 'adv_instructions'].includes(k)) {
+      // Advance-payment account details may legitimately be empty
+      // (e.g. only EasyPaisa configured, no bank account).
+      cleaned[k] = sanitizeText(b[k] == null ? '' : String(b[k]), k === 'adv_instructions' ? 500 : 120);
     } else {
       const v = sanitizeText(b[k], 500);
       if (!v) {
