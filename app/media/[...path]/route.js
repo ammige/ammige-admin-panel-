@@ -77,13 +77,33 @@ export async function GET(req, { params }) {
   // shared between deployments) — check there first, then fall back to disk.
   const dbHit = await readMediaDb(params.path);
   if (dbHit) {
+    const size = dbHit.buf.length;
+    const base = {
+      'Content-Type': dbHit.mime,
+      'Accept-Ranges': 'bytes',
+      'Cache-Control': 'public, max-age=31536000, immutable',
+    };
+    const range = req.headers.get('range');
+    if (range) {
+      const m = /^bytes=(\d*)-(\d*)$/.exec(range.trim());
+      if (m) {
+        let start = m[1] === '' ? null : parseInt(m[1], 10);
+        let end = m[2] === '' ? null : parseInt(m[2], 10);
+        if (start === null && end !== null) start = Math.max(0, size - end);
+        if (start !== null && end === null) end = size - 1;
+        if (start !== null && end !== null && start >= 0 && end >= start && start < size) {
+          end = Math.min(end, size - 1);
+          return new NextResponse(dbHit.buf.subarray(start, end + 1), {
+            status: 206,
+            headers: { ...base, 'Content-Range': `bytes ${start}-${end}/${size}`, 'Content-Length': String(end - start + 1) },
+          });
+        }
+        return new NextResponse('Range Not Satisfiable', { status: 416, headers: { 'Content-Range': `bytes */${size}` } });
+      }
+    }
     return new NextResponse(dbHit.buf, {
       status: 200,
-      headers: {
-        'Content-Type': dbHit.mime,
-        'Content-Length': String(dbHit.buf.length),
-        'Cache-Control': 'public, max-age=31536000, immutable',
-      },
+      headers: { ...base, 'Content-Length': String(size) },
     });
   }
   const full = resolveMediaPath(params.path);
