@@ -106,7 +106,7 @@ export async function PATCH(req) {
       cleaned[k] = v;
     } else if (k === 'theme_font') {
       const v = String(b[k] || '').trim();
-      if (!['cormorant-inter', 'playfair-montserrat', 'jost-jost', 'poppins-poppins'].includes(v)) {
+      if (!['cormorant-inter', 'playfair-montserrat', 'jost-jost', 'poppins-poppins', 'roboto-roboto'].includes(v)) {
         return NextResponse.json({ error: 'Unknown font choice.' }, { status: 400 });
       }
       cleaned[k] = v;
