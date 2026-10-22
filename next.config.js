@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Standalone server bundle so the same code runs on any Node host
+  // (Hostinger production) as well as on Vercel (staging).
+  output: 'standalone',
   images: {
     // Product photos may be hosted externally (admin allows image URLs);
     // without this the optimizer blocks them and cards render broken.
